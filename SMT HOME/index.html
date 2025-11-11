@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SMT 웹 로그인/회원가입 데모</title>
+  <style>
+    /* ============ 테마 ============ */
+    :root[data-theme="light"]{
+      --bg:#f9fafb; --card:#ffffff; --muted:#6b7280; --fg:#111827;
+      --accent:#2563eb; --accent-200:#3b82f6; --danger:#ef4444; --border:#d1d5db;
+      --nav:#f3f4f6; --nav-border:#e5e7eb; --chip:#ffffff; --chip-hover:#f3f4f6;
+      --shadow:0 4px 20px rgba(0,0,0,.05); --nav-shadow:0 2px 8px rgba(0,0,0,.05);
+      --submenu-bg:#ffffff; --submenu-border:#d1d5db; --submenu-hover:#f3f4f6;
+      --table-border:#e5e7eb;
+    }
+    :root[data-theme="dark"]{
+      --bg:#0b1220; --card:#111827;
+      --fg:#ffffff; --muted:#ffffff;
+      --accent:#2563eb; --accent-200:#3b82f6; --danger:#ef4444;
+      --border:#ffffff;
+      --nav:#0f1526; --nav-border:#ffffff;
+      --chip:#121a2e; --chip-hover:#192344;
+      --shadow:0 10px 30px rgba(0,0,0,.25); --nav-shadow:0 8px 24px rgba(0,0,0,.25);
+      --submenu-bg:#0f172a; --submenu-border:#ffffff; --submenu-hover:#162038;
+      --table-border:#ffffff;
+    }
+
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);
+      font:14px/1.5 system-ui,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif}
+    .wrap{min-height:100dvh;display:grid;place-items:start center;padding:32px}
+    .stack{width:100%;max-width:520px;display:flex;flex-direction:column;gap:18px}
+    .stack.wide{max-width:1100px;} /* 앱에서는 넓게 */
+
+    /* 로고 */
+    .로고{display:flex;align-items:center;gap:16px}
+    .로고 img{height:84px;width:auto;display:block}
+    .로고 h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.3px;color:var(--fg)}
+
+    /* 카드/폼 */
+    .card{background:var(--card);border:1px solid var(--border);
+      border-radius:16px;padding:22px 18px;box-shadow:var(--shadow); color:var(--fg)}
+    .card h2{margin:6px 4px 16px;font-size:18px;color:var(--fg)}
+    .grid{display:grid;gap:10px}
+    label{display:grid;gap:6px;color:var(--fg)}
+    input[type="text"],input[type="email"],input[type="password"],input[type="tel"]{
+      width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
+      background:#fff;color:#111827;outline:none}
+    :root[data-theme="dark"] input[type="text"],
+    :root[data-theme="dark"] input[type="email"],
+    :root[data-theme="dark"] input[type="password"],
+    :root[data-theme="dark"] input[type="tel"]{
+      background:#0f172a;color:#ffffff;border-color:#ffffff}
+    input::placeholder{color:#9ca3af}
+    .chk{display:flex;align-items:center;gap:8px;color:var(--muted)}
+    .row{display:flex;gap:10px}.row>*{flex:1}
+    .hint{color:var(--muted);font-size:12px}
+    .error{color:var(--danger);font-size:12px;margin-top:2px}
+    .btn{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--accent);
+      color:#fff;font-weight:700;cursor:pointer;transition:filter .2s}
+    .btn:hover{filter:brightness(1.05)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .link{color:var(--accent);text-decoration:underline;cursor:pointer}
+    .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+
+    @media (max-width:520px){ .wrap{padding:18px} .로고 img{height:70px} }
+
+    /* 상단 네비 */
+    .app{display:flex;flex-direction:column;gap:10px}
+    .topbar{background:var(--nav);border:1px solid var(--nav-border);
+      border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:10px;box-shadow:var(--nav-shadow)}
+    .brand{font-weight:800;color:var(--fg); white-space:nowrap;} /* ERP Demo 한 줄 고정 */
+    .menu{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+    .menu>li{
+      position:relative;background:var(--chip);border:1px solid var(--border);
+      padding:6px 10px;border-radius:8px;cursor:pointer;user-select:none;font-size:13px;transition:background .2s;
+      white-space:nowrap; color:var(--fg); /* 대시보드 한 줄 + 흰 글자 */
+    }
+    .menu>li:hover{background:var(--chip-hover)}
+    .submenu{
+      position:absolute;left:0;top:100%;margin-top:6px;display:none;min-width:180px;
+      background:var(--submenu-bg);border:1px solid var(--submenu-border);border-radius:10px;padding:6px;
+      box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:20}
+    .submenu a{display:block;padding:8px 10px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:13px;white-space:nowrap}
+    .submenu a:hover{background:var(--submenu-hover)}
+    .menu>li.open>.submenu{display:block !important}
+
+    /* 우측 영역 2줄 */
+    .topbar-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    .toggle{background:var(--chip);border:1px solid var(--border);color:var(--fg);
+      padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px; white-space:nowrap;}
+    .toggle:hover{background:var(--chip-hover)}
+    #welcome{line-height:1.2}
+
+    .app-body{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:320px;color:var(--fg)}
+    .muted{color:var(--muted)}
+
+    /* 대시보드 카드 */
+    .dash{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-top:10px}
+    .card-btn{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;text-align:left;transition:background .2s;color:var(--fg)}
+    .card-btn:hover{background:var(--chip-hover)}
+    .card-title{font-weight:700;margin:0 0 4px;color:var(--fg)}
+    .card-desc{color:var(--muted);font-size:12px;margin:0}
+
+    /* 표 */
+    .table-wrap{border:1px solid var(--table-border);border-radius:8px;overflow:auto;margin-top:14px}
+    .table{width:100%;border-collapse:collapse;font-size:13px;color:var(--fg)}
+    .table th,.table td{border-bottom:1px solid var(--table-border);padding:8px 10px;text-align:left;white-space:nowrap;color:var(--fg)}
+    .table thead th{position:sticky;top:0;background:var(--nav);color:var(--fg)}
+    .btn-mini{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--chip);cursor:pointer;color:var(--fg)}
+    .btn-mini:hover{background:var(--chip-hover)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stack">
+      <!-- 로고 -->
+      <div class="로고">
+        <img src="로고.png" alt="SMT 로고" onerror="this.style.display='none'">
+        <h1>ERP 사무를 자동화 하다</h1>
+      </div>
+
+      <!-- 로그인 -->
+      <section id="loginCard" class="card">
+        <h2>회원 로그인</h2>
+        <form id="loginForm" class="grid" autocomplete="on">
+          <label>아이디 <input id="loginId" type="text" placeholder="아이디" autocomplete="username" /></label>
+          <label>비밀번호 <input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" /></label>
+          <label class="chk"><input id="autoLogin" type="checkbox" /> 자동로그인</label>
+          <button id="loginBtn" type="submit" class="btn">로그인</button>
+          <div class="hint">아이디/비밀번호를 잊으셨나요? &nbsp;<span class="link" id="toSignup">회원가입</span></div>
+          <div id="loginErr" class="error" style="display:none"></div>
+        </form>
+      </section>
+
+      <!-- 회원가입 -->
+      <section id="signupCard" class="card" style="display:none">
+        <h2>회원가입</h2>
+        <div class="grid" id="signupForm">
+          <label>아이디 * <input id="suId" type="text" placeholder="4~20자 영문/숫자" minlength="4" maxlength="20" required></label>
+          <label>업체이름 * <input id="suCompany" type="text" placeholder="한글 또는 영문" required></label>
+          <label>휴대폰 * <input id="suPhone" type="tel" placeholder="휴대폰" inputmode="numeric" required></label>
+          <label>이메일 * <input id="suEmail" type="email" placeholder="이메일" required></label>
+          <div class="row">
+            <label>비밀번호 * <input id="suPw" type="password" placeholder="6~20자" minlength="6" maxlength="20" required></label>
+            <label>비밀번호 확인 * <input id="suPw2" type="password" placeholder="비밀번호확인" minlength="6" maxlength="20" required></label>
+          </div>
+          <label class="chk"><input id="agree" type="checkbox" required> 개인정보 수집·이용 동의</label>
+          <button id="signupBtn" class="btn" disabled>회원가입</button>
+          <div class="hint">이미 계정이 있나요? <span class="link" id="toLogin">로그인</span></div>
+          <div id="signupErr" class="error" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- 로그인 후 화면 -->
+      <section id="appCard" class="app" style="display:none">
+        <nav class="topbar">
+          <div class="brand">ERP Demo</div>
+          <ul class="menu">
+            <li>대시보드</li>
+            <li id="menu-automation">SMT 매크로 자동화
+              <div class="submenu" aria-label="SMT 매크로 자동화 메뉴">
+                <a href="#" id="mn-bom">BOM 등록</a>
+                <a href="#" id="mn-coords">좌표데이터 등록</a>
+              </div>
+            </li>
+          </ul>
+          <div class="topbar-right">
+            <span id="welcome" class="muted"></span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="themeToggle" class="toggle" type="button" aria-label="Toggle theme">🌙 다크</button>
+              <button id="logoutBtn" class="btn" style="width:auto;padding:6px 10px">로그아웃</button>
+            </div>
+          </div>
+        </nav>
+
+        <div class="app-body" id="appBody">
+          <!-- 요청에 따라 초기 안내 문구 제거 -->
+          <div id="fileResult" class="muted" style="margin-top:12px;"></div>
+          <div id="coordsContainer" style="margin-top:12px;"></div>
+          <div id="dashboard"></div>
+        </div>
+      </section>
+
+      <div class="footer">© 2025 SMT Demo</div>
+    </div>
+  </div>
+
+  <!-- 숨김 input -->
+  <input id="pickFolder"     type="file" webkitdirectory directory hidden>
+  <input id="pickBOMFiles"   type="file" accept=".xlsx,.xls,.csv" multiple hidden>
+  <input id="pickCoordFiles" type="file" accept=".xlsx,.xls,.csv" multiple hidden>
+  <input id="pickBOMEdit"    type="file" accept=".xlsx,.xls,.csv" hidden>
+  <input id="pickCoordEdit"  type="file" accept=".xlsx,.xls,.csv" hidden>
+
+  <script>
+    /* ===== 테마 토글 ===== */
+    (function themeBoot(){
+      const root = document.documentElement;
+      const saved = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = saved || (prefersDark ? 'dark' : 'light');
+      root.setAttribute('data-theme', initial);
+      updateToggleText(initial);
+    })();
+    function updateToggleText(theme){
+      const btn = document.getElementById('themeToggle');
+      btn.textContent = theme==='dark' ? '🌞 라이트' : '🌙 다크';
+    }
+    document.getElementById('themeToggle')?.addEventListener('click', ()=>{
+      const root = document.documentElement;
+      const cur = root.getAttribute('data-theme') || 'light';
+      const next = cur === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateToggleText(next);
+    });
+
+    /* ===== 로그인/회원가입 ===== */
+    const ADMIN_ID='admin', ADMIN_PW='1234';
+    const store={
+      get users(){return JSON.parse(localStorage.getItem('users')||'{}')},
+      set users(v){localStorage.setItem('users',JSON.stringify(v))},
+      get current(){return localStorage.getItem('currentUser')},
+      set current(id){id?localStorage.setItem('currentUser',id):localStorage.removeItem('currentUser')},
+      get auto(){return localStorage.getItem('autoLogin')==='true'},
+      set auto(v){localStorage.setItem('autoLogin',v?'true':'false')}
+    };
+    const $=s=>document.querySelector(s);
+    const stackEl = document.querySelector('.stack');
+
+    const view=name=>{
+      $("#loginCard").style.display=(name==='login')?'':'none';
+      $("#signupCard").style.display=(name==='signup')?'':'none';
+      $("#appCard").style.display=(name==='app')?'':'none';
+      if(stackEl){ if(name==='app') stackEl.classList.add('wide'); else stackEl.classList.remove('wide'); }
+    };
+
+    (function init(){
+      const id=store.current;
+      if(store.auto&&id){ if(id===ADMIN_ID||store.users[id]){enterApp(id);return} }
+      view('login');
+    })();
+
+    function handleLogin(){
+      const id=$("#loginId").value.trim(), pw=$("#loginPw").value, users=store.users;
+      const err=$("#loginErr"); err.style.display='none';
+      if(!id||!pw) return showErr(err,"아이디와 비밀번호를 입력하세요.");
+      if(id===ADMIN_ID && pw===ADMIN_PW){ store.current=ADMIN_ID; store.auto=$("#autoLogin").checked; enterApp(ADMIN_ID); return; }
+      if(!users[id]) return showErr(err,"존재하지 않는 아이디입니다.");
+      if(users[id].pw!==pw) return showErr(err,"비밀번호가 올바르지 않습니다.");
+      store.current=id; store.auto=$("#autoLogin").checked; enterApp(id);
+    }
+    $("#loginBtn").addEventListener('click',e=>{e.preventDefault();handleLogin()});
+    document.getElementById('loginForm').addEventListener('submit',e=>{e.preventDefault();handleLogin()});
+    function enterApp(id){ $("#welcome").textContent=`${id}님 접속됨`; view('app'); }
+    $("#logoutBtn").addEventListener('click',()=>{ store.current=null; store.auto=false;
+      $("#loginId").value=$("#loginPw").value=""; $("#autoLogin").checked=false; view('login'); });
+    const req=["#suId","#suCompany","#suPhone","#suEmail","#suPw","#suPw2"];
+    const enableIfValid=()=>{
+      const filled=req.every(s=>$(s).value.trim().length>0);
+      const pwOK=$("#suPw").value && $("#suPw").value===$("#suPw2").value;
+      $("#signupBtn").disabled=!(filled && pwOK && $("#agree").checked);
+    };
+    req.concat(["#agree","#suPw","#suPw2"]).forEach(s=>$(s).addEventListener('input',enableIfValid));
+    $("#signupBtn").addEventListener('click',()=>{
+      const err=$("#signupErr"); err.style.display='none';
+      const id=$("#suId").value.trim(), users=store.users;
+      if(id.toLowerCase()===ADMIN_ID) return showErr(err,"'admin'은 사용할 수 없는 아이디입니다.");
+      if(!/^[A-Za-z0-9_\-]{4,20}$/.test(id)) return showErr(err,"아이디는 4~20자 영문/숫자/[-,_]만 허용합니다.");
+      if(users[id]) return showErr(err,"이미 사용 중인 아이디입니다.");
+      if($("#suPw").value !== $("#suPw2").value) return showErr(err,"비밀번호가 일치하지 않습니다.");
+      users[id]={id,company:$("#suCompany").value.trim(),phone:$("#suPhone").value.trim(),email:$("#suEmail").value.trim(),pw:$("#suPw").value,createdAt:new Date().toISOString()};
+      store.users=users; store.current=id; store.auto=false; enterApp(id);
+    });
+    function showErr(n,m){ n.textContent=m; n.style.display='block'; }
+    $("#toSignup").addEventListener('click',()=>view('signup'));
+    $("#toLogin").addEventListener('click',()=>view('login'));
+
+    /* ===== 서브메뉴: 열림 유지, 바깥 클릭 시 닫기 ===== */
+    (function keepSubmenuUntilOutsideClick(){
+      const menuItem=document.getElementById('menu-automation'); if(!menuItem) return;
+      const submenu=menuItem.querySelector('.submenu');
+      const open=()=>menuItem.classList.add('open');
+      const close=()=>menuItem.classList.remove('open');
+      menuItem.addEventListener('mouseenter',open); submenu?.addEventListener('mouseenter',open);
+      menuItem.addEventListener('click',(e)=>{open();e.stopPropagation()});
+      submenu?.addEventListener('click',e=>e.stopPropagation());
+      document.addEventListener('click',e=>{ if(!menuItem.contains(e.target)) close(); },true);
+      document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+      document.addEventListener('touchstart',e=>{ if(!menuItem.contains(e.target)) close(); },{capture:true,passive:true});
+    })();
+
+    /* ===== 대시보드 + BOM/좌표 화면 ===== */
+    const dashboard=document.getElementById('dashboard');
+    function clearBodyLog(){ const fr=$("#fileResult"); if(fr) fr.innerHTML=''; const cc=$("#coordsContainer"); if(cc) cc.innerHTML=''; }
+    function setBodyHTML(html){ const body=$("#appBody"); clearBodyLog(); dashboard.innerHTML=html||''; body.scrollTo({top:0,behavior:'smooth'}) }
+
+    /* ===== 공통 유틸 ===== */
+    async function pickTargetDirectory(){
+      if(!window.showDirectoryPicker) return null;
+      try{ return await window.showDirectoryPicker({id:'smt-save',mode:'readwrite',startIn:'documents'}); }
+      catch(e){ return null; }
+    }
+    async function ensureSubfolder(parent,name){ try{ return await parent.getDirectoryHandle(name,{create:true}); }catch(e){ return parent; } }
+    async function saveFileToDirectory(dirHandle,file,subFolder){
+      try{
+        if(subFolder) dirHandle = await ensureSubfolder(dirHandle, subFolder);
+        const fh = await dirHandle.getFileHandle(file.name,{create:true});
+        const w = await fh.createWritable(); await w.write(await file.arrayBuffer()); await w.close(); return true;
+      }catch(e){ console.error(e); return false; }
+    }
+    function forceDownload(file,prefix){
+      const url=URL.createObjectURL(file); const a=document.createElement('a'); a.href=url; a.download=`${prefix}-${file.name}`;
+      document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},0);
+    }
+
+    /* ===== BOM 라이브러리 ===== */
+    const bomLib = {
+      _key:'bomLibrary',
+      all(){ return JSON.parse(localStorage.getItem(this._key)||'[]'); },
+      save(list){ localStorage.setItem(this._key, JSON.stringify(list)); },
+      add(files){ const list=this.all(); const now=new Date().toISOString();
+        for(const f of files){ list.push({ id:crypto.randomUUID(), name:f.name, size:f.size, type:f.type, savedAt:now, updatedAt:null }); }
+        this.save(list);
+      },
+      update(id, file){ const list=this.all(); const i=list.findIndex(x=>x.id===id); if(i>-1){ list[i]={...list[i], name:file.name, size:file.size, type:file.type, updatedAt:new Date().toISOString()}; this.save(list); } },
+      remove(id){ const list=this.all().filter(x=>x.id!==id); this.save(list); }
+    };
+
+    function showBOMDashboard(){
+      setBodyHTML(`
+        <h2 style="margin:0 0 10px 0">BOM 대시보드</h2>
+        <div class="dash">
+          <button class="card-btn" id="btnBOMReg">
+            <p class="card-title">BOM 등록</p>
+            <p class="card-desc">엑셀/CSV 파일을 선택해 저장</p>
+          </button>
+          <button class="card-btn" id="btnHome">
+            <p class="card-title">대시보드</p>
+            <p class="card-desc">홈으로 돌아가기</p>
+          </button>
+        </div>
+
+        <div id="bomLog" class="muted" style="margin-top:12px;"></div>
+
+        <div class="table-wrap">
+          <table class="table" id="bomTable">
+            <thead><tr><th>파일명</th><th>크기</th><th>등록일</th><th>수정일</th><th>작업</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      `);
+
+      // 요청 문구 표시
+      document.getElementById('bomLog').textContent = 'BOM 등록 양식에 맞춰서 등록 부탁드리겠습니다!';
+
+      document.getElementById('btnBOMReg').addEventListener('click',()=>{
+        document.getElementById('pickBOMFiles').value=''; document.getElementById('pickBOMFiles').click();
+      });
+      document.getElementById('btnHome').addEventListener('click',()=>{
+        // 홈 이동 시 안내 문구 없이 비워둠
+        setBodyHTML('');
+      });
+
+      renderBOMList();
+    }
+
+    function renderBOMList(){
+      const tbody = document.querySelector('#bomTable tbody');
+      if(!tbody) return;
+      const list = bomLib.all();
+      const fmt = n => (n/1024).toFixed(1)+' KB';
+      const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+      tbody.innerHTML = list.map(r=>`
+        <tr data-id="${r.id}">
+          <td>${esc(r.name)}</td>
+          <td>${fmt(r.size)}</td>
+          <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>
+            <button class="btn-mini act-edit">수정</button>
+            <button class="btn-mini act-del">삭제</button>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="5" class="muted">저장된 BOM 파일이 없습니다.</td></tr>`;
+
+      // 수정
+      tbody.querySelectorAll('.act-edit').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const id = btn.closest('tr').dataset.id;
+          const pick = document.getElementById('pickBOMEdit');
+          pick.onchange = e=>{
+            const f = e.target.files?.[0]; if(!f) return;
+            bomLib.update(id, f);
+            renderBOMList();
+            logBom(`✏️ 수정 완료: ${f.name}`);
+            pick.value='';
+          };
+          pick.value=''; pick.click();
+        });
+      });
+
+      // 삭제 (로그 문구 출력 없음)
+      tbody.querySelectorAll('.act-del').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const id = btn.closest('tr').dataset.id;
+          bomLib.remove(id);
+          renderBOMList();
+        });
+      });
+    }
+
+    function logBom(msg){ const log=document.getElementById('bomLog'); if(log) log.innerHTML=msg; }
+
+    /* ===== 좌표데이터 라이브러리 (BOM과 동일 동작) ===== */
+    const coordLib = {
+      _key:'coordLibrary',
+      all(){ return JSON.parse(localStorage.getItem(this._key)||'[]'); },
+      save(list){ localStorage.setItem(this._key, JSON.stringify(list)); },
+      add(files){ const list=this.all(); const now=new Date().toISOString();
+        for(const f of files){ list.push({ id:crypto.randomUUID(), name:f.name, size:f.size, type:f.type, savedAt:now, updatedAt:null }); }
+        this.save(list);
+      },
+      update(id, file){ const list=this.all(); const i=list.findIndex(x=>x.id===id); if(i>-1){ list[i]={...list[i], name:file.name, size:file.size, type:file.type, updatedAt:new Date().toISOString()}; this.save(list); } },
+      remove(id){ const list=this.all().filter(x=>x.id!==id); this.save(list); }
+    };
+
+    function showCoordDashboard(){
+      setBodyHTML(`
+        <h2 style="margin:0 0 10px 0">좌표데이터 대시보드</h2>
+        <div class="dash">
+          <button class="card-btn" id="btnCoordReg">
+            <p class="card-title">좌표데이터 등록</p>
+            <p class="card-desc">엑셀/CSV 파일을 선택해 저장</p>
+          </button>
+          <button class="card-btn" id="btnHome2">
+            <p class="card-title">대시보드</p>
+            <p class="card-desc">홈으로 돌아가기</p>
+          </button>
+        </div>
+
+        <!-- 요청에 따라 아래 안내 문구는 표기하지 않음 -->
+        <div id="coordLog" class="muted" style="margin-top:10px;"></div>
+
+        <div class="table-wrap">
+          <table class="table" id="coordTable">
+            <thead><tr><th>파일명</th><th>크기</th><th>등록일</th><th>수정일</th><th>작업</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      `);
+      document.getElementById('btnCoordReg').addEventListener('click',()=>{
+        document.getElementById('pickCoordFiles').value=''; document.getElementById('pickCoordFiles').click();
+      });
+      document.getElementById('btnHome2').addEventListener('click',()=>{
+        // 홈 이동 시 안내 문구 없이 비워둠
+        setBodyHTML('');
+      });
+
+      renderCoordList();
+    }
+
+    function renderCoordList(){
+      const tbody = document.querySelector('#coordTable tbody');
+      if(!tbody) return;
+      const list = coordLib.all();
+      const fmt = n => (n/1024).toFixed(1)+' KB';
+      const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+      tbody.innerHTML = list.map(r=>`
+        <tr data-id="${r.id}">
+          <td>${esc(r.name)}</td>
+          <td>${fmt(r.size)}</td>
+          <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>
+            <button class="btn-mini act-edit2">수정</button>
+            <button class="btn-mini act-del2">삭제</button>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="5" class="muted">저장된 좌표데이터 파일이 없습니다.</td></tr>`;
+
+      // 수정
+      tbody.querySelectorAll('.act-edit2').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const id = btn.closest('tr').dataset.id;
+          const pick = document.getElementById('pickCoordEdit');
+          pick.onchange = e=>{
+            const f = e.target.files?.[0]; if(!f) return;
+            coordLib.update(id, f);
+            renderCoordList();
+            // 요청에 따라 기본 안내 문구는 넣지 않음 (필요 시 로그만 갱신)
+            pick.value='';
+          };
+          pick.value=''; pick.click();
+        });
+      });
+
+      // 삭제 (로그 문구 없이)
+      tbody.querySelectorAll('.act-del2').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const id = btn.closest('tr').dataset.id;
+          coordLib.remove(id);
+          renderCoordList();
+        });
+      });
+    }
+
+    function logCoord(msg){ const log=document.getElementById('coordLog'); if(log) log.innerHTML=msg; }
+
+    /* ===== 메뉴 클릭 ===== */
+    document.getElementById('mn-bom')?.addEventListener('click',e=>{e.preventDefault();showBOMDashboard()});
+    document.getElementById('mn-coords')?.addEventListener('click',e=>{e.preventDefault();showCoordDashboard()});
+
+    /* ===== 파일 선택 핸들러 ===== */
+    // BOM 등록
+    document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
+      const files = Array.from(e.target.files||[]); if(!files.length) return;
+      logBom(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>저장 폴더를 선택하세요…`);
+      let dirHandle = await pickTargetDirectory();
+      if(dirHandle){
+        let ok=0; for(const f of files){ if(await saveFileToDirectory(dirHandle,f,'BOM')) ok++; }
+        logBom(`✅ 저장 완료: ${ok}/${files.length}개 (경로: 선택 폴더/BOM)`);
+      }else{
+        files.forEach(f=>forceDownload(f,'BOM'));
+        logBom(`⬇️ 브라우저 다운로드로 저장했습니다.`);
+      }
+      bomLib.add(files);
+      renderBOMList();
+    });
+
+    // 좌표데이터 등록
+    document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
+      const files = Array.from(e.target.files||[]); if(!files.length) return;
+      // 기본 안내 문구 없이 진행
+      let dirHandle = await pickTargetDirectory();
+      if(dirHandle){
+        let ok=0; for(const f of files){ if(await saveFileToDirectory(dirHandle,f,'COORDS')) ok++; }
+        logCoord(`✅ 저장 완료: ${ok}/${files.length}개 (경로: 선택 폴더/COORDS)`);
+      }else{
+        files.forEach(f=>forceDownload(f,'COORD'));
+        logCoord(`⬇️ 브라우저 다운로드로 저장했습니다.`);
+      }
+      coordLib.add(files);
+      renderCoordList();
+    });
+  </script>
+</body>
+</html>
