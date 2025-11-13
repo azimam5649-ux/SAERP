@@ -1,108 +1,229 @@
-:root {
-  --bg:#0b1220;
-  --card:#111827;
-  --muted:#94a3b8;
-  --fg:#e5e7eb;
-  --accent:#2563eb;
-  --accent-200:#3b82f6;
-  --border:#1f2937;
+/* ============ 테마 ============ */
+:root[data-theme="light"]{
+  --bg:#0b1220; --card:#0f172a; --fg:#ffffff; --muted:#cbd5e1;
+  --accent:#2563eb; --accent-200:#3b82f6; --danger:#ef4444; --border:#334155;
+  --nav:#0f1526; --nav-border:#1e293b; --chip:#0f172a; --chip-hover:#162038;
+  --shadow:0 10px 30px rgba(0,0,0,.25); --nav-shadow:0 8px 24px rgba(0,0,0,.25);
+  --submenu-bg:#0f172a; --submenu-border:#1e293b; --submenu-hover:#162038;
+  --table-border:#243042; --overlay:rgba(0,0,0,.55);
+}
+:root[data-theme="dark"]{
+  --bg:#0b1220; --card:#0f172a; --fg:#ffffff; --muted:#cbd5e1;
+  --accent:#2563eb; --accent-200:#3b82f6; --danger:#ef4444; --border:#334155;
+  --nav:#0f1526; --nav-border:#1e293b; --chip:#0f172a; --chip-hover:#162038;
+  --shadow:0 10px 30px rgba(0,0,0,.25); --nav-shadow:0 8px 24px rgba(0,0,0,.25);
+  --submenu-bg:#0f172a; --submenu-border:#1e293b; --submenu-hover:#162038;
+  --table-border:#243042; --overlay:rgba(0,0,0,.55);
 }
 
+*{box-sizing:border-box}
 body{
   margin:0;
   background:var(--bg);
   color:var(--fg);
-  font:14px/1.5 system-ui,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
+  font:14px/1.5 system-ui,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif
+}
+.wrap{min-height:100dvh;display:grid;place-items:start center;padding:32px}
+.stack{width:100%;max-width:520px;display:flex;flex-direction:column;gap:18px}
+.stack.wide{max-width:1100px;}
+
+/* 로고 */
+.로고{display:flex;align-items:center;gap:16px}
+.로고 img{height:84px;width:auto;display:block}
+.로고 h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.3px;color:var(--fg)}
+
+/* 카드/폼 */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:22px 18px;
+  box-shadow:var(--shadow);
+  color:var(--fg)
+}
+.card h2{margin:6px 4px 16px;font-size:18px;color:var(--fg)}
+.grid{display:grid;gap:10px}
+label{display:grid;gap:6px;color:var(--fg)}
+input[type="text"],input[type="email"],input[type="password"],input[type="tel"]{
+  width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
+  background:#0f172a;color:#ffffff;outline:none
+}
+input::placeholder{color:#9ca3af}
+.chk{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.hint{color:var(--muted);font-size:12px}
+.error{color:var(--danger);font-size:12px;margin-top:2px}
+.btn{
+  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+  background:var(--accent);color:#fff;font-weight:700;cursor:pointer;
+  transition:filter .2s;white-space:nowrap;line-height:1
+}
+.btn:hover{filter:brightness(1.05)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{color:var(--accent);text-decoration:underline;cursor:pointer}
+.footer{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+
+@media (max-width:520px){
+  .wrap{padding:18px}
+  .로고 img{height:70px}
 }
 
-/* Topbar */
+/* 상단 네비 */
+.app{display:flex;flex-direction:column;gap:10px}
 .topbar{
-  display:flex;
-  align-items:center;
-  background:#111827;
-  border-bottom:1px solid var(--border);
-  padding:10px 20px;
+  background:var(--nav);border:1px solid var(--nav-border);
+  border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:10px;
+  box-shadow:var(--nav-shadow)
 }
-.brand{font-weight:bold;font-size:16px}
-
-/* Menu / Submenu */
-.menu{
-  list-style:none;
-  display:flex;
-  gap:16px;
-  margin:0;
-  padding:0 20px;
+.brand{font-weight:800;color:var(--fg); white-space:nowrap;}
+.menu{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+.menu>li{
+  position:relative;background:var(--chip);border:1px solid var(--border);
+  padding:6px 10px;border-radius:8px;cursor:pointer;user-select:none;font-size:13px;transition:background .2s;
+  white-space:nowrap; color:var(--fg);
 }
-.menu li{position:relative;cursor:pointer}
+.menu>li:hover{background:var(--chip-hover)}
 .submenu{
-  position:absolute;
-  top:100%;
-  left:0;
-  display:none;           /* JS로 토글 */
-  flex-direction:column;
-  min-width:160px;        /* 통일 */
-  background:#1f2937;
-  border:1px solid #334155;
-  z-index:10;
+  position:absolute;left:0;top:100%;margin-top:6px;display:none;min-width:180px;
+  background:var(--submenu-bg);border:1px solid var(--submenu-border);border-radius:10px;padding:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:20
 }
 .submenu a{
-  display:block;
-  padding:8px 12px;
-  color:#e5e7eb;
-  text-decoration:none;
+  display:block;padding:8px 10px;border-radius:8px;color:var(--fg);
+  text-decoration:none;font-size:13px;white-space:nowrap
 }
-.submenu a:hover{background:var(--accent)}
+.submenu a:hover{background:var(--submenu-hover)}
+.menu>li.open>.submenu{display:block !important}
 
-/* Footer */
-.footer{
-  text-align:center;
-  padding:20px;
-  color:var(--muted);
-  border-top:1px solid var(--border);
-  margin-top:30px;
+.topbar-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.toggle{
+  background:var(--chip);border:1px solid var(--border);color:var(--fg);
+  padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px; white-space:nowrap;
 }
+.toggle:hover{background:var(--chip-hover)}
+#welcome{line-height:1.2}
 
-/* File result emphasis */
-#fileResult b{color:var(--fg)}
+.app-body{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px;min-height:320px;color:var(--fg)
+}
+.muted{color:var(--muted)}
 
-/* Table */
-.table-wrap{
-  border:1px solid var(--border);
-  border-radius:8px;
-  overflow:auto;
-  margin-top:10px;
+/* 대시보드 카드 */
+.dash{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-top:10px}
+.card-btn{
+  background:var(--chip);border:1px solid var(--border);border-radius:12px;
+  padding:14px;cursor:pointer;text-align:left;transition:background .2s;
+  color:var(--fg);white-space:normal
 }
-.table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-  background:#0f172a;
-}
-.table th,
-.table td{
-  border-bottom:1px solid #334155;
-  padding:8px 10px;
-  text-align:left;
-  white-space:nowrap;
-}
-.table thead th{
-  position:sticky;
-  top:0;
-  background:#111827;
-}
+.card-btn:hover{background:var(--chip-hover)}
+.card-title{font-weight:700;margin:0 0 4px;color:var(--fg)}
+.card-desc{color:var(--muted);font-size:12px;margin:0}
 
-/* Buttons */
-.btnbar{display:flex;gap:8px;margin-bottom:8px}
+/* 표 */
+.table-wrap{border:1px solid var(--table-border);border-radius:8px;overflow:auto;margin-top:14px}
+.table{width:100%;border-collapse:collapse;font-size:13px;color:var(--fg)}
+.table th,.table td{
+  border-bottom:1px solid var(--table-border);padding:8px 10px;
+  text-align:left;white-space:nowrap;color:var(--fg)
+}
+.table thead th{position:sticky;top:0;background:var(--nav);color:var(--fg)}
 .btn-mini{
-  background:#334155;
-  color:#e5e7eb;
-  border:1px solid #475569;
-  border-radius:8px;
-  padding:6px 10px;
-  cursor:pointer;
+  padding:6px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--chip);cursor:pointer;color:var(--fg);white-space:nowrap;line-height:1
 }
-.btn-mini:hover{background:var(--accent);border-color:var(--accent)}
+.btn-mini:hover{background:var(--chip-hover)}
+.btn-ghost{
+  background:transparent;color:var(--fg);border:1px solid var(--border);
+  padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;line-height:1
+}
 
-/* 하위메뉴 강제 오픈 상태 */
-.menu > li.open .submenu { display: block !important; }
+/* ===== 모달 공통 ===== */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:var(--overlay);z-index:100}
+.modal[open]{display:flex}
+.modal-card{
+  background:var(--card);color:var(--fg);
+  width:min(960px,94vw);
+  max-height:92vh;
+  border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px}
+.modal-body{padding:16px;overflow:auto;min-height:420px}
+.modal-body h3{margin:14px 0 6px;font-size:15px}
+.modal-body p,.modal-body li{font-size:13px;color:var(--fg)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)}
 
+/* ============ 테마 (CSS에서만 관리) ============ */
+
+/* 기본값: 다크 테마 */
+:root{
+  --bg:#0b1220;
+  --card:#0f172a;
+  --fg:#ffffff;
+  --muted:#cbd5e1;
+  --accent:#2563eb;
+  --accent-200:#3b82f6;
+  --danger:#ef4444;
+  --border:#334155;
+  --nav:#0f1526;
+  --nav-border:#1e293b;
+  --chip:#0f172a;
+  --chip-hover:#162038;
+  --shadow:0 10px 30px rgba(0,0,0,.25);
+  --nav-shadow:0 8px 24px rgba(0,0,0,.25);
+  --submenu-bg:#0f172a;
+  --submenu-border:#1e293b;
+  --submenu-hover:#162038;
+  --table-border:#243042;
+  --overlay:rgba(0,0,0,.55);
+}
+
+/* 라이트 모드일 때 (class="theme-light" 이 붙으면 이 값으로 덮어씀) */
+body.theme-light{
+  --bg:#e5e7eb;          /* 약간 밝은 회색 배경 */
+  --card:#ffffff;        /* 카드 흰색 */
+  --fg:#0f172a;          /* 글자 진한 남색 */
+  --muted:#6b7280;
+  --accent:#2563eb;
+  --accent-200:#1d4ed8;
+  --danger:#b91c1c;
+  --border:#cbd5e1;
+  --nav:#f3f4f6;
+  --nav-border:#e5e7eb;
+  --chip:#e5e7eb;
+  --chip-hover:#d1d5db;
+  --shadow:0 10px 30px rgba(15,23,42,.18);
+  --nav-shadow:0 8px 24px rgba(15,23,42,.15);
+  --submenu-bg:#ffffff;
+  --submenu-border:#e5e7eb;
+  --submenu-hover:#e5e7eb;
+  --table-border:#e5e7eb;
+  --overlay:rgba(15,23,42,.45);
+}
+
+/* 다크 모드 강제 (class="theme-dark" 이 붙으면 확실히 다크) */
+body.theme-dark{
+  --bg:#0b1220;
+  --card:#0f172a;
+  --fg:#ffffff;
+  --muted:#cbd5e1;
+  --accent:#2563eb;
+  --accent-200:#3b82f6;
+  --danger:#ef4444;
+  --border:#334155;
+  --nav:#0f1526;
+  --nav-border:#1e293b;
+  --chip:#0f172a;
+  --chip-hover:#162038;
+  --shadow:0 10px 30px rgba(0,0,0,.25);
+  --nav-shadow:0 8px 24px rgba(0,0,0,.25);
+  --submenu-bg:#0f172a;
+  --submenu-border:#1e293b;
+  --submenu-hover:#162038;
+  --table-border:#243042;
+  --overlay:rgba(0,0,0,.55);
+}
+
+/* 나머지 기존 CSS (body, .wrap, .stack, .card, .btn 등등) 는
+   지금 쓰고 있던 그대로 밑에 이어서 두면 됨 */

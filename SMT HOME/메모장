@@ -1,0 +1,7 @@
+/project
+ ├─ login.html
+ ├─ style.css
+ └─ app.js
+CSS(다크/라이트 + 레이아웃 + 카드 + 네비 + 모달 + 테이블) → style.css
+
+JS(로그인·회원가입·테마·BOM/좌표·모달·파일저장·선택창 등) → app.js

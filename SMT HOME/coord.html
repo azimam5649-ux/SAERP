@@ -1,0 +1,19 @@
+<!-- login.html 전체 내용 복사 후, 마지막에 추가 -->
+<script>
+  // coord.html : 로드되면 바로 앱 화면 + 좌표데이터 대시보드
+  window.addEventListener('load', function () {
+    try {
+      if (typeof enterApp === 'function') {
+        var id = (typeof store !== 'undefined' && store.current) ? store.current : 'guest';
+        enterApp(id);
+      }
+      if (typeof showCoordDashboard === 'function') {
+        showCoordDashboard();
+      }
+    } catch (e) {
+      console.error('좌표데이터 진입 오류:', e);
+    }
+  });
+</script>
+</body>
+</html>

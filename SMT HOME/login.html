@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SMT 웹 로그인/회원가입 데모</title>
+  <link rel="stylesheet" href="main_style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="stack">
+      <!-- 로고 -->
+      <div class="로고">
+        <img src="로고.png" alt="SMT 로고" onerror="this.style.display='none'">
+        <h1>ERP 사무를 자동화</h1>
+      </div>
+
+      <!-- 로그인 -->
+      <section id="loginCard" class="card">
+        <h2>회원 로그인</h2>
+        <form id="loginForm" class="grid" autocomplete="on">
+          <label>아이디
+            <input id="loginId" type="text" placeholder="아이디" autocomplete="username" />
+          </label>
+          <label>비밀번호
+            <input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+          </label>
+          <label class="chk"><input id="autoLogin" type="checkbox" /> 자동로그인</label>
+          <button id="loginBtn" type="submit" class="btn">로그인</button>
+          <div class="hint">
+            아이디/비밀번호를 잊으셨나요?
+            &nbsp;<span class="link" id="toSignup">회원가입</span>
+          </div>
+          <div id="loginErr" class="error" style="display:none"></div>
+        </form>
+      </section>
+
+      <!-- 회원가입 -->
+      <section id="signupCard" class="card" style="display:none">
+        <h2>회원가입</h2>
+        <div class="grid" id="signupForm">
+          <label>아이디 *
+            <input id="suId" type="text" placeholder="4~20자 영문/숫자"
+                   minlength="4" maxlength="20" required>
+          </label>
+          <label>업체이름 *
+            <input id="suCompany" type="text" placeholder="한글 또는 영문" required>
+          </label>
+          <label>휴대폰 *
+            <input id="suPhone" type="tel" placeholder="휴대폰" inputmode="numeric" required>
+          </label>
+          <label>이메일 *
+            <input id="suEmail" type="email" placeholder="이메일" required>
+          </label>
+          <div class="row">
+            <label>비밀번호 *
+              <input id="suPw" type="password" placeholder="6~20자"
+                     minlength="6" maxlength="20" required>
+            </label>
+            <label>비밀번호 확인 *
+              <input id="suPw2" type="password" placeholder="비밀번호확인"
+                     minlength="6" maxlength="20" required>
+            </label>
+          </div>
+
+          <!-- 동의 + 전문보기(모달) -->
+          <div class="chk">
+            <input id="agree" type="checkbox" required>
+            <span>개인정보 수집·이용 동의 (필수)</span>
+            <button id="openConsent" type="button" class="btn-mini" style="margin-left:auto">상세 보기</button>
+          </div>
+
+          <button id="signupBtn" class="btn" disabled>회원가입</button>
+          <div class="hint">
+            이미 계정이 있나요?
+            <span class="link" id="toLogin">로그인</span>
+          </div>
+          <div id="signupErr" class="error" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- 로그인 후 화면 -->
+      <section id="appCard" class="app" style="display:none">
+        <nav class="topbar">
+          <div class="brand">ERP Demo</div>
+          <ul class="menu">
+            <li>대시보드</li>
+            <li id="menu-automation">SMT 매크로 자동화
+              <div class="submenu" aria-label="SMT 매크로 자동화 메뉴">
+                <a href="#" id="mn-bom">BOM 등록</a>
+                <a href="#" id="mn-coords">좌표데이터 등록</a>
+                <a href="#" id="mn-extract">결과값 추출</a>
+              </div>
+            </li>
+          </ul>
+          <div class="topbar-right">
+            <span id="welcome" class="muted"></span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="themeToggle" class="toggle" type="button" aria-label="Toggle theme">🌙 다크</button>
+              <button id="logoutBtn" class="btn" style="width:auto;padding:6px 10px">로그아웃</button>
+            </div>
+          </div>
+        </nav>
+
+        <div class="app-body" id="appBody">
+          <div id="fileResult" class="muted" style="margin-top:12px;"></div>
+          <div id="coordsContainer" style="margin-top:12px;"></div>
+          <div id="dashboard"></div>
+        </div>
+      </section>
+
+      <div class="footer">© 2025 SMT Demo</div>
+    </div>
+  </div>
+
+  <!-- 숨김 input -->
+  <input id="pickFolder"     type="file" webkitdirectory directory hidden>
+  <input id="pickBOMFiles"   type="file" accept=".xlsx,.xls,.csv" multiple hidden>
+  <input id="pickCoordFiles" type="file" accept=".xlsx,.xls,.csv" multiple hidden>
+  <input id="pickBOMEdit"    type="file" accept=".xlsx,.xls,.csv" hidden>
+  <input id="pickCoordEdit"  type="file" accept=".xlsx,.xls,.csv" hidden>
+
+  <!-- 개인정보 동의 모달 -->
+  <div id="consentModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong id="consentTitle">개인정보 수집·이용 동의 (필수)</strong>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn-ghost" onclick="window.print()">인쇄</button>
+          <button type="button" class="btn-ghost" id="closeConsent">닫기</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p style="margin:0 0 8px;color:var(--muted)">버전: <b>v1.0 (2025-11-11)</b></p>
+        <h3>1. 수집 항목</h3>
+        <ul>
+          <li>필수: 아이디, 비밀번호, 업체명, 휴대폰번호, 이메일, 가입일시</li>
+          <li>자동수집: 접속기록, IP, 쿠키/LocalStorage, 기기·브라우저 정보</li>
+        </ul>
+        <h3>2. 이용 목적</h3>
+        <ul>
+          <li>회원 식별, 로그인/권한관리</li>
+          <li>BOM·좌표 관리 기능 제공</li>
+          <li>보안·품질 개선·통계</li>
+        </ul>
+        <h3>3. 보유 기간</h3>
+        <ul>
+          <li>회원 탈퇴 시 지체 없이 파기</li>
+          <li>법령 보존기간이 있으면 그에 따름</li>
+        </ul>
+        <h3>4. 제공/위탁/국외이전</h3>
+        <p>원칙적으로 제공하지 않으며, 필요한 경우 별도 고지·동의를 받습니다.</p>
+        <h3>5. 권리</h3>
+        <p>열람·정정·삭제·처리정지·동의철회 및 탈퇴는 고객지원 채널로 요청 가능합니다.</p>
+        <h3>6. 동의 거부 시 불이익</h3>
+        <p>필수 항목 미동의 시 회원가입 및 서비스 이용이 제한됩니다.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="declineConsent">취소</button>
+        <button type="button" class="btn" id="acceptConsent">동의</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 등록 항목 선택 모달 (BOM/좌표 공용) -->
+  <div id="selectModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="selectTitle" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong id="selectTitle">선택</strong>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="selectSearch" type="text" placeholder="이름 검색"
+                 style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--fg)">
+          <button type="button" class="btn-ghost" id="selectClose">닫기</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="selectEmpty" class="muted" style="display:none">등록된 항목이 없습니다.</div>
+        <div id="selectTools" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button type="button" class="btn-mini" id="btnSelectAll">전체선택</button>
+          <button type="button" class="btn-mini" id="btnSelectNone">전체해제</button>
+          <span id="selectCount" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="selectTable">
+            <thead>
+              <tr>
+                <th style="width:48px">선택</th>
+                <th>파일명</th>
+                <th style="width:120px">크기</th>
+                <th style="width:170px">등록/수정</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="selectCancel">취소</button>
+        <button type="button" class="btn" id="selectApply">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="app.js"></script>
+</body>
+</html>
