@@ -466,7 +466,15 @@ function showExtractDashboard(){
 
     <div class="table-wrap" style="margin-top:12px">
       <table class="table" id="extractTable">
-        <thead><tr><th>구분</th><th>파일명</th><th>크기</th><th>등록/수정일</th></tr></thead>
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>파일명</th>
+            <th>크기</th>
+            <th>등록/수정일</th>
+            <th>작업</th>   <!-- ✅ 수정/삭제 버튼 자리 -->
+          </tr>
+        </thead>
         <tbody></tbody>
       </table>
     </div>
@@ -478,24 +486,90 @@ function showExtractDashboard(){
   document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
   document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
 }
+  renderExtractSelectedTable();
+
+  document.getElementById('btnPickBOM')?.addEventListener('click', ()=> openSelectModal('bom'));
+  document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
+  document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
 
 function renderExtractSelectedTable(){
-  const tbody = document.querySelector('#extractTable tbody'); if(!tbody) return;
-  const listB = (window.bomLib.all()||[]).filter(r=>extractState.bomIds.includes(r.id)).map(x=>({type:'BOM',...x}));
-  const listC = (window.coordLib.all()||[]).filter(r=>extractState.coordIds.includes(r.id)).map(x=>({type:'COORD',...x}));
+  const tbody = document.querySelector('#extractTable tbody'); 
+  if(!tbody) return;
+
+  // ✅ BOM / COORD 에 공통으로 kind 필드 추가 (type은 건들지 않음)
+  const listB = (window.bomLib.all()||[])
+    .filter(r => (extractState.bomIds || []).includes(r.id))
+    .map(x => ({ ...x, kind: 'BOM' }));
+
+  const listC = (window.coordLib.all()||[])
+    .filter(r => (extractState.coordIds || []).includes(r.id))
+    .map(x => ({ ...x, kind: 'COORD' }));
+
   const rows = [...listB, ...listC];
+
   const fmt = n => (n/1024).toFixed(1)+' KB';
   const dt = r => r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19)
                               : (r.savedAt? r.savedAt.replace('T',' ').slice(0,19) : '-');
-  const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const esc = s => String(s).replace(/[&<>"]/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]
+  ));
+
   tbody.innerHTML = rows.length ? rows.map(r=>`
-    <tr>
-      <td>${r.type}</td>
+    <tr data-id="${r.id}" data-kind="${r.kind}">
+      <td>${r.kind}</td>                 <!-- ✅ 이제 구분칸에는 BOM / COORD 표시 -->
       <td>${esc(r.name)}</td>
       <td>${fmt(r.size)}</td>
       <td>${dt(r)}</td>
+      <td>
+        <button class="btn-mini act-edit-ex">수정</button>
+        <button class="btn-mini act-del-ex">삭제</button>
+      </td>
     </tr>
-  `).join('') : `<tr><td colspan="4" class="muted">선택된 항목이 없습니다. 상단에서 선택해 주세요.</td></tr>`;
+  `).join('') : `
+    <tr>
+      <td colspan="5" class="muted">
+        선택된 항목이 없습니다. 상단에서 선택해 주세요.
+      </td>
+    </tr>
+  `;
+
+  // ✅ [수정] 버튼: BOM / 좌표 선택 모달 열기 (지금 네가 쓰는 동작 그대로면 유지)
+  tbody.querySelectorAll('.act-edit-ex').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tr   = btn.closest('tr');
+      const kind = tr.dataset.kind;   // 'BOM' 또는 'COORD'
+      if(kind === 'BOM'){
+        openSelectModal('bom');
+      }else if(kind === 'COORD'){
+        openSelectModal('coord');
+      }
+    });
+  });
+
+  // ✅ [삭제] 버튼: kind 에 따라 제대로 삭제
+  tbody.querySelectorAll('.act-del-ex').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tr   = btn.closest('tr');
+      const id   = tr.dataset.id;
+      const kind = tr.dataset.kind;   // 'BOM' 또는 'COORD'
+
+      if(kind === 'BOM'){
+        // BOM 라이브러리에서 삭제
+        bomLib.remove(id);
+        // 결과값 선택 상태에서도 제거
+        extractState.bomIds = (extractState.bomIds || []).filter(x => x !== id);
+      }else if(kind === 'COORD'){
+        coordLib.remove(id);
+        extractState.coordIds = (extractState.coordIds || []).filter(x => x !== id);
+      }
+      saveExtractState();
+
+      // 대시보드 & 결과값 테이블 모두 갱신
+      renderBOMList?.();
+      renderCoordList?.();
+      renderExtractSelectedTable();
+    });
+  });
 }
 
 /* === 선택 모달 === */
