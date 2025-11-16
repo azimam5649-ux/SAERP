@@ -512,45 +512,18 @@ function logCoord(msg){ const log=document.getElementById('coordLog'); if(log) l
 /* ==== 결과값 추출 전용 라이브러리 (BOM/좌표와 분리) ==== */
 const extractLib = {
   _key: 'extractLibrary',
-
-  // 전체 읽기
   all(){
     return JSON.parse(localStorage.getItem(this._key) || '[]');
   },
-
-  // 전체 저장
   save(list){
     localStorage.setItem(this._key, JSON.stringify(list));
   },
-
-  // ✅ RESULT 포함해서 임의 항목 추가 (결과 엑셀 등록용)
-  add(meta){
-    const list = this.all();
-    const now  = new Date().toISOString();
-
-    list.push({
-      id:        meta.id        || crypto.randomUUID(),
-      kind:      meta.kind      || 'RESULT',   // BOM / COORD / RESULT
-      name:      meta.name      || 'RESULT.xlsx',
-      size:      meta.size      || 0,
-      type:      meta.type      || 'application/octet-stream',
-      savedAt:   meta.savedAt   || now,
-      updatedAt: meta.updatedAt || null,
-      blobUrl:   meta.blobUrl   || null        // 필요하면 다운로드에 활용 가능
-    });
-
-    this.save(list);
-  },
-
-  // ✅ 전체 삭제용
   clear(){
     this.save([]);
   },
-
-  // BOM / COORD 선택 모달에서 선택한 것 반영
   setFromSelection(type, ids){
     const kind = (type === 'bom') ? 'BOM' : 'COORD';
-    const src  = getLibAll(type); // bomLib.all() 또는 coordLib.all()
+    const src  = getLibAll(type);
 
     const current = this.all();
     const others  = current.filter(x => x.kind !== kind);
@@ -566,9 +539,15 @@ const extractLib = {
 
     this.save([...others, ...selected]);
   },
-
   remove(id, kind){
     const list = this.all().filter(x => !(x.id === id && x.kind === kind));
+    this.save(list);
+  },
+
+  // 🔹 txt.js 에서 호출할 추가 메서드
+  add(meta){
+    const list = this.all();
+    list.push(meta);
     this.save(list);
   }
 };
@@ -747,6 +726,18 @@ function showExtractDashboard(){
   document.getElementById('btnPickBOM')?.addEventListener('click', ()=> openSelectModal('bom'));
   document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
   document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
+
+  // 🔹 메모장으로 출력하기 (Top/Bot txt 생성)
+  document.getElementById('btnExtractTxt')?.addEventListener('click', () => {
+  console.log('[app.js] btnExtractTxt click, SMTText =', window.SMTText);
+
+  if (!window.SMTText || typeof window.SMTText.runFromSelectedToTxt !== 'function') {
+    alert('SMTText.runFromSelectedToTxt 함수가 없습니다.\n(콘솔 로그를 캡처해서 보여 주세요)');
+    return;
+  }
+
+  window.SMTText.runFromSelectedToTxt();
+});
 
   // ✅ 결과값 전체 삭제 (extractLib만)
   document.getElementById('btnExtractClear')?.addEventListener('click', ()=>{
