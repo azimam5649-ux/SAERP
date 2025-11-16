@@ -201,7 +201,10 @@
     </div>
   </div>
 
-  <!-- JS -->
+  <!-- JS (순서 중요: 먼저 XLSX, 그 다음 app.js) -->
+    <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="smt_extract.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
