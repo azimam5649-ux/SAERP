@@ -1,0 +1,21 @@
+<!-- login.html 전체 내용 복사 후, 마지막에 추가 -->
+<script>
+  // bom.html : 로드되면 바로 앱 화면 + BOM 대시보드
+  window.addEventListener('load', function () {
+    try {
+      // 로그인된 것처럼 앱 화면으로 전환
+      if (typeof enterApp === 'function') {
+        var id = (typeof store !== 'undefined' && store.current) ? store.current : 'guest';
+        enterApp(id);
+      }
+      // BOM 대시보드 열기
+      if (typeof showBOMDashboard === 'function') {
+        showBOMDashboard();
+      }
+    } catch (e) {
+      console.error('BOM 진입 오류:', e);
+    }
+  });
+</script>
+</body>
+</html>

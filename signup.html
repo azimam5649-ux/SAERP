@@ -1,0 +1,31 @@
+<!-- 위쪽 전체 내용은 login.html 과 100% 동일 -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <!-- (위의 head, style 전체 동일 – 생략 없이 그대로 복사) -->
+  <!-- ... 위 login.html 의 <head> 내용을 그대로 붙이기 ... -->
+</head>
+<body>
+  <!-- (위의 body 내용도 login.html 과 동일 – 로그인/회원가입/앱/모달 포함) -->
+  <!-- ... login.html 의 <body> 안 전체 그대로 ... -->
+
+  <!-- 마지막 script 부분도 login.html 과 동일 + 아래 한 블럭 추가 -->
+  <script>
+    <!-- (위 login.html의 script 내용 전체 그대로 복붙) -->
+  </script>
+
+  <!-- 🔽 여기부터 추가된 블럭 -->
+  <script>
+    // signup.html : 로드되면 회원가입 화면부터 보이게
+    window.addEventListener('load', function () {
+      try {
+        if (typeof view === 'function') {
+          view('signup');  // 기존 JS의 view()를 이용해서 회원가입 카드 표시
+        }
+      } catch (e) {
+        console.error('signup 진입 오류:', e);
+      }
+    });
+  </script>
+</body>
+</html>
