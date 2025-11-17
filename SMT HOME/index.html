@@ -1,20 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <title>SMT 데모</title>
 
+  <!-- 접속 시 login.html로 즉시 이동 -->
   <script>
-    // 페이지가 열리면 바로 login.html로 이동
     window.location.replace("login.html");
-    // 만약 로그인 파일 이름이 다르면 여기만 바꿔주면 됨
-    // 예: "login.html", "login/index.html" 등
   </script>
-</head>
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <title>SMT 데모 - 메인 메뉴</title>
+
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
     body{
       margin:0;
@@ -39,14 +35,22 @@
     ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   </style>
 </head>
+
 <body>
+  <!-- 리다이렉트 실패 시(스크립트 꺼져있을 때) 보여지는 대체 화면 -->
   <div class="card">
     <h1>SMT 데모 메인</h1>
     <ul>
-<script src="xlsx.full.min.js"></script>
-<script src="smt_extract.js"></script>
-<script src="app.js"></script>
-<script src="txt.js"></script>
+      <li><a href="login.html">로그인 화면</a></li>
+      <li><a href="join.html">회원가입 화면</a></li>
+      <li><a href="bom.html">BOM 등록 화면</a></li>
+      <li><a href="coord.html">좌표데이터 등록 화면</a></li>
+    </ul>
+  </div>
+
+  <script src="xlsx.full.min.js"></script>
+  <script src="smt_extract.js"></script>
+  <script src="app.js"></script>
+  <script src="txt.js"></script>
 </body>
 </html>
-
