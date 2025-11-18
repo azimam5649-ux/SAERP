@@ -104,23 +104,43 @@ function enableIfValid(){
   q(sel)?.addEventListener('change', enableIfValid);
 });
 
-$("#signupBtn")?.addEventListener('click',()=>{
-  const err=$("#signupErr"); err.style.display='none';
-  const id=$("#suId").value.trim(), users=store.users;
+$("#signupBtn")?.addEventListener('click', async ()=>{
+  const err = $("#signupErr"); 
+  err.style.display='none';
+
+  const id       = $("#suId").value.trim();
+  const company  = $("#suCompany").value.trim();
+  const phone    = $("#suPhone").value.trim();
+  const email    = $("#suEmail").value.trim();
+  const pw       = $("#suPw").value;
+  const pw2      = $("#suPw2").value;
+
   if(!q('#agree')?.checked) return showErr(err,"개인정보 수집·이용에 동의해 주세요.");
   if(id.toLowerCase()===ADMIN_ID) return showErr(err,"'admin'은 사용할 수 없는 아이디입니다.");
   if(!/^[A-Za-z0-9_\-]{4,20}$/.test(id)) return showErr(err,"아이디는 4~20자 영문/숫자/[-,_]만 허용합니다.");
-  if(users[id]) return showErr(err,"이미 사용 중인 아이디입니다.");
-  if($("#suPw").value !== $("#suPw2").value) return showErr(err,"비밀번호가 일치하지 않습니다.");
-  users[id]={
-    id,
-    company:$("#suCompany").value.trim(),
-    phone:$("#suPhone").value.trim(),
-    email:$("#suEmail").value.trim(),
-    pw:$("#suPw").value,
-    createdAt:new Date().toISOString()
-  };
-  store.users=users; store.current=id; store.auto=false; enterApp(id);
+  if(pw !== pw2) return showErr(err,"비밀번호가 일치하지 않습니다.");
+
+  try{
+    const res = await fetch('signup.php', {   // 위치에 따라 './api/signup.php' 이런 식으로 변경 가능
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ id, company, phone, email, pw })
+    });
+
+    const data = await res.json();
+    if(!res.ok || !data.success){
+      return showErr(err, data.message || '회원가입에 실패했습니다.');
+    }
+
+    alert('회원가입이 완료되었습니다. 이제 로그인해 주세요.');
+    // 회원가입 후 자동 로그인 대신 로그인 화면으로 돌리기
+    $("#loginId").value = id;
+    view('login');
+
+  }catch(e){
+    console.error(e);
+    showErr(err,"서버와 통신할 수 없습니다.");
+  }
 });
 
 function showErr(n,m){ if(!n) return; n.textContent=m; n.style.display='block'; }
