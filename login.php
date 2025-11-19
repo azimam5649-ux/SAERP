@@ -1,79 +1,46 @@
 <?php
-// /saerp/api/login.php
+require_once __DIR__ . '/config.php';
 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=utf-8");
+// JSON 또는 FormData 둘 다 처리
+$data = read_json_body();
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    echo json_encode(['ok' => true, 'msg' => 'OK']);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'msg' => 'POST만 허용됩니다.']);
-    exit;
-}
-
-// --- DB 접속 정보 (★ signup.php 와 동일하게 설정) ---
-$host = "localhost";
-$user = "root";
-$pass = "Bb83205959!";
-$db   = "saerp";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'msg' => 'DB 연결 실패: '.$conn->connect_error]);
-    exit;
-}
-$conn->set_charset("utf8mb4");
-
-$userid   = trim($_POST['userid']  ?? '');
-$password = $_POST['password']     ?? '';
-
-if ($userid === '' || $password === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'msg' => '아이디와 비밀번호를 입력하세요.']);
-    exit;
-}
-
-// 해당 사용자 조회
-$stmt = $conn->prepare("SELECT id, password_hash, company FROM users WHERE userid = ?");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'msg' => '쿼리 준비 실패: '.$conn->error]);
-    exit;
-}
-$stmt->bind_param("s", $userid);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($row = $result->fetch_assoc()) {
-    if (!password_verify($password, $row['password_hash'])) {
-        http_response_code(401);
-        echo json_encode(['ok' => false, 'msg' => '비밀번호가 올바르지 않습니다.']);
-    } else {
-        // 간단 토큰 (실서비스면 JWT/세션 등으로 교체)
-        $token = bin2hex(random_bytes(16));
-        // 세션을 쓰고 싶다면 여기에 session_start() 하고 저장해도 됨
-
-        echo json_encode([
-            'ok'      => true,
-            'msg'     => '로그인 성공',
-            'token'   => $token,
-            'user_id' => (int)$row['id'],
-            'company' => $row['company']
-        ]);
-    }
+if ($data && is_array($data)) {
+    // app.js에서 보내는 JSON 형식
+    $userid = trim($data['id'] ?? '');
+    $pw     = $data['pw']      ?? '';
 } else {
-    http_response_code(404);
-    echo json_encode(['ok' => false, 'msg' => '존재하지 않는 아이디입니다.']);
+    // auth.js에서 FormData로 보낼 수도 있으므로 대비
+    $userid = trim($_POST['userid']   ?? '');
+    $pw     = $_POST['password']      ?? '';
 }
 
+if (!$userid || !$pw) {
+    json_err('아이디와 비밀번호를 입력해 주세요.');
+}
+
+// DB에서 사용자 조회
+$stmt = $mysqli->prepare('SELECT id, password FROM users WHERE userid = ?');
+$stmt->bind_param('s', $userid);
+$stmt->execute();
+$stmt->store_result();
+
+if ($stmt->num_rows === 0) {
+    $stmt->close();
+    json_err('존재하지 않는 아이디입니다.');
+}
+
+$stmt->bind_result($id, $hash);
+$stmt->fetch();
 $stmt->close();
-$conn->close();
+
+// 비밀번호 검증
+if (!password_verify($pw, $hash)) {
+    json_err('비밀번호가 올바르지 않습니다.');
+}
+
+// (선택) 토큰 등 세션 만들고 싶으면 여기에 추가.
+// 지금은 간단하게 성공 여부 + userid만 반환
+json_ok([
+  'userid' => $userid,
+  'msg'    => '로그인 성공'
+]);

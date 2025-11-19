@@ -1,82 +1,58 @@
 <?php
-// /saerp/api/signup.php
+require_once __DIR__ . '/config.php';
 
-// --- CORS 설정 ---
-// ★ 실제 서비스때는 * 대신 GitHub 주소로 제한하는 게 안전함
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=utf-8");
+// JSON 또는 FormData 둘 다 처리
+$data = read_json_body();
 
-// Preflight 요청 처리
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    echo json_encode(['ok' => true, 'msg' => 'OK']);
-    exit;
+if ($data && is_array($data)) {
+    // app.js에서 보내는 JSON 형식
+    $userid  = trim($data['id']      ?? '');
+    $company = trim($data['company'] ?? '');
+    $phone   = trim($data['phone']   ?? '');
+    $email   = trim($data['email']   ?? '');
+    $pw      = $data['pw']           ?? '';
+} else {
+    // auth.js에서 FormData로 보낼 수도 있으므로 대비
+    $userid  = trim($_POST['userid']  ?? '');
+    $company = trim($_POST['company'] ?? '');
+    $phone   = trim($_POST['phone']   ?? '');
+    $email   = trim($_POST['email']   ?? '');
+    $pw      = $_POST['password']     ?? '';
 }
 
-// POST만 허용
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'msg' => 'POST만 허용됩니다.']);
-    exit;
+// 필수값 체크
+if (!$userid || !$company || !$phone || !$email || !$pw) {
+    json_err('필수 항목이 누락되었습니다.');
 }
 
-// --- DB 접속 정보 (★ 수정) ---
-$host = "localhost";
-$user = "root";          // MariaDB 사용자
-$pass = "Bb83205959!";       // MariaDB 비밀번호
-$db   = "saerp";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'msg' => 'DB 연결 실패: '.$conn->connect_error]);
-    exit;
+// 아이디 중복 확인
+$stmt = $mysqli->prepare('SELECT id FROM users WHERE userid = ?');
+$stmt->bind_param('s', $userid);
+$stmt->execute();
+$stmt->store_result();
+if ($stmt->num_rows > 0) {
+    $stmt->close();
+    json_err('이미 사용 중인 아이디입니다.');
 }
-$conn->set_charset("utf8mb4");
-
-// 폼 데이터 받기
-$userid   = trim($_POST['userid']  ?? '');
-$company  = trim($_POST['company'] ?? '');
-$phone    = trim($_POST['phone']   ?? '');
-$email    = trim($_POST['email']   ?? '');
-$password = $_POST['password']     ?? '';
-
-if ($userid === '' || $company === '' || $phone === '' || $email === '' || $password === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'msg' => '필수 항목이 비어 있습니다.']);
-    exit;
-}
+$stmt->close();
 
 // 비밀번호 해시
-$hash = password_hash($password, PASSWORD_DEFAULT);
+$hash = password_hash($pw, PASSWORD_DEFAULT);
 
 // INSERT
-$stmt = $conn->prepare("
-    INSERT INTO users (userid, company, phone, email, password_hash)
-    VALUES (?, ?, ?, ?, ?)
-");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'msg' => '쿼리 준비 실패: '.$conn->error]);
-    exit;
-}
-$stmt->bind_param("sssss", $userid, $company, $phone, $email, $hash);
+$stmt = $mysqli->prepare(
+  'INSERT INTO users (userid, company, phone, email, password) VALUES (?,?,?,?,?)'
+);
+$stmt->bind_param('sssss', $userid, $company, $phone, $email, $hash);
 
-if ($stmt->execute()) {
-    echo json_encode(['ok' => true, 'msg' => '회원가입 성공']);
-} else {
-    if ($conn->errno === 1062) {
-        // pk/unique 중복 (아이디 중복)
-        http_response_code(409);
-        echo json_encode(['ok' => false, 'msg' => '이미 사용 중인 아이디입니다.']);
-    } else {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'msg' => 'DB 오류: '.$conn->error]);
-    }
+if (!$stmt->execute()) {
+    $msg = '회원가입 중 오류가 발생했습니다: ' . $stmt->error;
+    $stmt->close();
+    json_err($msg, 500);
 }
-
 $stmt->close();
-$conn->close();
+
+json_ok([
+  'userid' => $userid,
+  'msg'    => '회원가입 성공'
+]);
