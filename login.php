@@ -1,43 +1,79 @@
 <?php
-// login.php - 로그인 처리
-require __DIR__ . '/config.php';
+// /saerp/api/login.php
 
-header('Content-Type: application/json; charset=utf-8');
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Content-Type: application/json; charset=utf-8");
 
-try {
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) {
-        throw new Exception('잘못된 요청입니다.');
-    }
-
-    $userid = trim($input['id'] ?? '');
-    $pw     = (string)($input['pw'] ?? '');
-
-    if ($userid === '' || $pw === '') {
-        throw new Exception('아이디와 비밀번호를 입력하세요.');
-    }
-
-    // DB에서 사용자 찾기
-    $stmt = $pdo->prepare("SELECT userid, password_hash, company, email FROM users WHERE userid = ?");
-    $stmt->execute([$userid]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        throw new Exception('존재하지 않는 아이디입니다.');
-    }
-
-    if (!password_verify($pw, $row['password_hash'])) {
-        throw new Exception('비밀번호가 올바르지 않습니다.');
-    }
-
-    // 여기서 PHP 세션을 써도 되지만, 일단은 JS에서만 currentUser 저장
-    echo json_encode([
-        'ok'      => true,
-        'userid'  => $row['userid'],
-        'company' => $row['company'],
-        'email'   => $row['email'],
-    ]);
-} catch (Throwable $e) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    echo json_encode(['ok' => true, 'msg' => 'OK']);
+    exit;
 }
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'msg' => 'POST만 허용됩니다.']);
+    exit;
+}
+
+// --- DB 접속 정보 (★ signup.php 와 동일하게 설정) ---
+$host = "localhost";
+$user = "root";
+$pass = "Bb83205959!";
+$db   = "saerp";
+
+$conn = new mysqli($host, $user, $pass, $db);
+if ($conn->connect_error) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'msg' => 'DB 연결 실패: '.$conn->connect_error]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
+
+$userid   = trim($_POST['userid']  ?? '');
+$password = $_POST['password']     ?? '';
+
+if ($userid === '' || $password === '') {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'msg' => '아이디와 비밀번호를 입력하세요.']);
+    exit;
+}
+
+// 해당 사용자 조회
+$stmt = $conn->prepare("SELECT id, password_hash, company FROM users WHERE userid = ?");
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'msg' => '쿼리 준비 실패: '.$conn->error]);
+    exit;
+}
+$stmt->bind_param("s", $userid);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($row = $result->fetch_assoc()) {
+    if (!password_verify($password, $row['password_hash'])) {
+        http_response_code(401);
+        echo json_encode(['ok' => false, 'msg' => '비밀번호가 올바르지 않습니다.']);
+    } else {
+        // 간단 토큰 (실서비스면 JWT/세션 등으로 교체)
+        $token = bin2hex(random_bytes(16));
+        // 세션을 쓰고 싶다면 여기에 session_start() 하고 저장해도 됨
+
+        echo json_encode([
+            'ok'      => true,
+            'msg'     => '로그인 성공',
+            'token'   => $token,
+            'user_id' => (int)$row['id'],
+            'company' => $row['company']
+        ]);
+    }
+} else {
+    http_response_code(404);
+    echo json_encode(['ok' => false, 'msg' => '존재하지 않는 아이디입니다.']);
+}
+
+$stmt->close();
+$conn->close();
