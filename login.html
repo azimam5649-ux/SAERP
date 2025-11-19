@@ -12,7 +12,7 @@
       <!-- 로고 -->
       <div class="로고">
         <img src="로고.png" alt="SMT 로고" onerror="this.style.display='none'">
-        <h1>ERP 사무를 자동화</h1>
+        <h1></h1>
       </div>
 
       <!-- 로그인 -->
@@ -37,47 +37,68 @@
 
       <!-- 회원가입 -->
       <section id="signupCard" class="card" style="display:none">
-        <h2>회원가입</h2>
-        <div class="grid" id="signupForm">
-          <label>아이디 *
-            <input id="suId" type="text" placeholder="4~20자 영문/숫자"
-                   minlength="4" maxlength="20" required>
-          </label>
-          <label>업체이름 *
-            <input id="suCompany" type="text" placeholder="한글 또는 영문" required>
-          </label>
-          <label>휴대폰 *
-            <input id="suPhone" type="tel" placeholder="휴대폰" inputmode="numeric" required>
-          </label>
-          <label>이메일 *
-            <input id="suEmail" type="email" placeholder="이메일" required>
-          </label>
-          <div class="row">
-            <label>비밀번호 *
-              <input id="suPw" type="password" placeholder="6~20자"
-                     minlength="6" maxlength="20" required>
-            </label>
-            <label>비밀번호 확인 *
-              <input id="suPw2" type="password" placeholder="비밀번호확인"
-                     minlength="6" maxlength="20" required>
-            </label>
-          </div>
+  <h2>회원가입</h2>
 
-          <!-- 동의 + 전문보기(모달) -->
-          <div class="chk">
-            <input id="agree" type="checkbox" required>
-            <span>개인정보 수집·이용 동의 (필수)</span>
-            <button id="openConsent" type="button" class="btn-mini" style="margin-left:auto">상세 보기</button>
-          </div>
+  <!-- 🔹 div → form / method + action 추가 -->
+<form class="grid" id="signupForm"
+      method="POST"
+      action="signup.php">
 
-          <button id="signupBtn" class="btn" disabled>회원가입</button>
-          <div class="hint">
-            이미 계정이 있나요?
-            <span class="link" id="toLogin">로그인</span>
-          </div>
-          <div id="signupErr" class="error" style="display:none"></div>
-        </div>
-      </section>
+
+    <!-- 🔹 name 속성을 PHP 코드와 맞춰서 추가 -->
+    <label>아이디 *
+      <input id="suId" name="userid" type="text"
+             placeholder="4~20자 영문/숫자"
+             minlength="4" maxlength="20" required>
+    </label>
+
+    <label>업체이름 *
+      <input id="suCompany" name="company" type="text"
+             placeholder="한글 또는 영문" required>
+    </label>
+
+    <label>휴대폰 *
+      <input id="suPhone" name="phone" type="tel"
+             placeholder="휴대폰" inputmode="numeric" required>
+    </label>
+
+    <label>이메일 *
+      <input id="suEmail" name="email" type="email"
+             placeholder="이메일" required>
+    </label>
+
+    <div class="row">
+      <label>비밀번호 *
+        <input id="suPw" name="password" type="password"
+               placeholder="6~20자"
+               minlength="6" maxlength="20" required>
+      </label>
+      <label>비밀번호 확인 *
+        <input id="suPw2" type="password"
+               placeholder="비밀번호확인"
+               minlength="6" maxlength="20" required>
+      </label>
+    </div>
+
+    <div class="chk">
+      <input id="agree" type="checkbox" required>
+      <span>개인정보 수집·이용 동의 (필수)</span>
+      <button id="openConsent" type="button"
+              class="btn-mini" style="margin-left:auto">상세 보기</button>
+    </div>
+
+    <!-- 🔹 type="submit" 으로 변경 (폼 전송용) -->
+    <!--    동의 체크 전까지 disabled 유지하고 JS로 enable 할 거면 disabled 놔둬도 됨 -->
+    <button id="signupBtn" class="btn" type="submit" disabled>회원가입</button>
+
+    <div class="hint">
+      이미 계정이 있나요?
+      <span class="link" id="toLogin">로그인</span>
+    </div>
+    <div id="signupErr" class="error" style="display:none"></div>
+
+  </form>
+</section>
 
       <!-- 로그인 후 화면 -->
       <section id="appCard" class="app" style="display:none">
@@ -109,9 +130,7 @@
         </div>
       </section>
 
-      <div class="footer">© 2025 SMT Demo</div>
-    </div>
-  </div>
+<div class="footer">© SAERP Demo</div>
 
   <!-- 숨김 input -->
   <input id="pickFolder"     type="file" webkitdirectory directory hidden>
@@ -203,9 +222,9 @@
 
   <!-- JS (순서 중요: 먼저 XLSX, 그 다음 app.js) -->
     <!-- JS -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
+  <script src="xlsx.full.min.js"></script>
   <script src="smt_extract.js"></script>
+  <script src="app.js"></script>
+  <script src="txt.js"></script>
 </body>
 </html>
-

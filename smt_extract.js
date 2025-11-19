@@ -582,16 +582,18 @@ function isCoordExcludedRef(ref) {
       ];
       XLSX.utils.book_append_sheet(wbOut, wsMiss, '미삽 추출');
 
-      const baseName = (bomMeta.name || 'SMT_RESULT').replace(/\.[^.]+$/, '');
+            const baseName = (bomMeta.name || 'SMT_RESULT').replace(/\.[^.]+$/, '');
       const fileName = baseName + '_결과_미삽.xlsx';
 
-      // 엑셀 파일 생성 & 다운로드
+      // ----- Blob 생성 + 다운로드 -----
+            // ----- Blob 생성 + 다운로드 + RESULT 리스트 등록 -----
       const wbArray = XLSX.write(wbOut, { bookType: 'xlsx', type: 'array' });
       const blob    = new Blob(
         [wbArray],
         { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
       );
 
+      // 1) 사용자에게 다운로드
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
       a.href = url;
@@ -601,7 +603,7 @@ function isCoordExcludedRef(ref) {
       a.remove();
       URL.revokeObjectURL(url);
 
-      // 리스트에도 RESULT 항목으로 추가 (선택 사항)
+      // 2) 결과값 목록(extractLib)에 RESULT 항목 추가
       if (global.extractLib && typeof global.extractLib.add === 'function') {
         const now = new Date();
         const meta = {
@@ -609,12 +611,19 @@ function isCoordExcludedRef(ref) {
           kind: 'RESULT',
           name: fileName,
           size: blob.size,
-          updatedAt: now.toISOString().replace('T', ' ').substring(0, 19),
-          blobUrl: URL.createObjectURL(blob)
+          savedAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          blobUrl: null   // 필요하면 URL.createObjectURL(blob) 써도 됨
         };
         global.extractLib.add(meta);
-        if (typeof global.extractLib.save === 'function') {
-          global.extractLib.save();
+      }
+
+      // 3) 결과값 추출 화면이 열려 있다면 바로 테이블 갱신
+      if (global.renderExtractSelectedTable) {
+        try {
+          global.renderExtractSelectedTable();
+        } catch (e) {
+          console.warn('RESULT 테이블 갱신 중 오류:', e);
         }
       }
 

@@ -37,95 +37,146 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 
 /* ==== 로그인/회원가입 ==== */
 const ADMIN_ID='admin', ADMIN_PW='1234';
-const store={
-  get users(){return JSON.parse(localStorage.getItem('users')||'{}')},
-  set users(v){localStorage.setItem('users',JSON.stringify(v))},
+const store = {
   get current(){return localStorage.getItem('currentUser')},
   set current(id){id?localStorage.setItem('currentUser',id):localStorage.removeItem('currentUser')},
   get auto(){return localStorage.getItem('autoLogin')==='true'},
   set auto(v){localStorage.setItem('autoLogin',v?'true':'false')}
 };
-const $=s=>document.querySelector(s);
+/* ==== 로그인/회원가입 (MariaDB 연동) ==== */
+
+const $ = s => document.querySelector(s);
 const stackEl = document.querySelector('.stack');
 
-const view=name=>{
-  $("#loginCard").style.display=(name==='login')?'':'none';
-  $("#signupCard").style.display=(name==='signup')?'':'none';
-  $("#appCard").style.display=(name==='app')?'':'none';
-  if(stackEl){
-    if(name==='app') stackEl.classList.add('wide'); else stackEl.classList.remove('wide');
+let currentUser = null;   // 메모리에만 현재 로그인 사용자 저장
+
+const view = name => {
+  $("#loginCard").style.display  = (name === 'login')  ? '' : 'none';
+  $("#signupCard").style.display = (name === 'signup') ? '' : 'none';
+  $("#appCard").style.display    = (name === 'app')    ? '' : 'none';
+  if (stackEl) {
+    if (name === 'app') stackEl.classList.add('wide');
+    else stackEl.classList.remove('wide');
   }
 };
 
+// 초기 진입: 로그인 화면
 (function init(){
-  const id=store.current;
-  if(store.auto&&id){
-    if(id===ADMIN_ID||store.users[id]){enterApp(id);return}
-  }
   view('login');
 })();
 
-function handleLogin(){
-  const id=$("#loginId").value.trim(), pw=$("#loginPw").value, users=store.users;
-  const err=$("#loginErr"); err.style.display='none';
-  if(!id||!pw) return showErr(err,"아이디와 비밀번호를 입력하세요.");
-  if(id===ADMIN_ID && pw===ADMIN_PW){
-    store.current=ADMIN_ID; store.auto=$("#autoLogin").checked; enterApp(ADMIN_ID); return;
+// ----- 로그인 -----
+async function handleLogin(){
+  const id = $("#loginId").value.trim();
+  const pw = $("#loginPw").value;
+  const err = $("#loginErr");
+  err.style.display = 'none';
+
+  if(!id || !pw){
+    return showErr(err,"아이디와 비밀번호를 입력하세요.");
   }
-  if(!users[id]) return showErr(err,"존재하지 않는 아이디입니다.");
-  if(users[id].pw!==pw) return showErr(err,"비밀번호가 올바르지 않습니다.");
-  store.current=id; store.auto=$("#autoLogin").checked; enterApp(id);
+
+  try {
+    const res = await fetch('login.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, pw })
+    });
+    const data = await res.json();
+
+    if(!data.ok){
+      return showErr(err, data.msg || "로그인에 실패했습니다.");
+    }
+
+    store.current = data.userid;
+    store.auto    = $("#autoLogin").checked;
+    enterApp(data.userid);
+  } catch (e) {
+    console.error(e);
+    showErr(err,"서버 통신 오류가 발생했습니다.");
+  }
 }
+
 $("#loginBtn")?.addEventListener('click',e=>{e.preventDefault();handleLogin()});
 $("#loginForm")?.addEventListener('submit',e=>{e.preventDefault();handleLogin()});
 
-function enterApp(id){
-  $("#welcome").textContent=`${id}님 접속됨`;
-  view('app');
-}
 
-$("#logoutBtn")?.addEventListener('click',()=>{
-  store.current=null; store.auto=false;
-  $("#loginId").value=$("#loginPw").value=""; $("#autoLogin").checked=false; view('login');
+$("#logoutBtn")?.addEventListener('click', () => {
+  currentUser = null;
+  $("#loginId").value = "";
+  $("#loginPw").value = "";
+  $("#autoLogin").checked = false;  // UI만 남겨두고 기능은 사용 안 함
+  view('login');
 });
 
-// 회원가입 활성화
-const req=["#suId","#suCompany","#suPhone","#suEmail","#suPw","#suPw2"];
+// ----- 회원가입 입력 유효성 & 버튼 활성 -----
+const req = ["#suId","#suCompany","#suPhone","#suEmail","#suPw","#suPw2"];
 function q(sel){ return document.querySelector(sel); }
-function valOK(sel){ const el=q(sel); return !!(el && el.value.trim().length>0); }
+function valOK(sel){ const el = q(sel); return !!(el && el.value.trim().length > 0); }
 function enableIfValid(){
   const filled = req.every(valOK);
   const pwOK   = q('#suPw') && q('#suPw2') && (q('#suPw').value === q('#suPw2').value);
   const agreed = q('#agree') ? q('#agree').checked : false;
-  const btn = q('#signupBtn'); if(btn) btn.disabled = !(filled && pwOK && agreed);
+  const btn = q('#signupBtn'); 
+  if (btn) btn.disabled = !(filled && pwOK && agreed);
 }
-[...req, '#suPw', '#suPw2', '#agree'].forEach(sel=>{
-  q(sel)?.addEventListener('input', enableIfValid);
+[...req, '#suPw', '#suPw2', '#agree'].forEach(sel => {
+  q(sel)?.addEventListener('input',  enableIfValid);
   q(sel)?.addEventListener('change', enableIfValid);
 });
 
-$("#signupBtn")?.addEventListener('click',()=>{
-  const err=$("#signupErr"); err.style.display='none';
-  const id=$("#suId").value.trim(), users=store.users;
-  if(!q('#agree')?.checked) return showErr(err,"개인정보 수집·이용에 동의해 주세요.");
-  if(id.toLowerCase()===ADMIN_ID) return showErr(err,"'admin'은 사용할 수 없는 아이디입니다.");
-  if(!/^[A-Za-z0-9_\-]{4,20}$/.test(id)) return showErr(err,"아이디는 4~20자 영문/숫자/[-,_]만 허용합니다.");
-  if(users[id]) return showErr(err,"이미 사용 중인 아이디입니다.");
-  if($("#suPw").value !== $("#suPw2").value) return showErr(err,"비밀번호가 일치하지 않습니다.");
-  users[id]={
-    id,
-    company:$("#suCompany").value.trim(),
-    phone:$("#suPhone").value.trim(),
-    email:$("#suEmail").value.trim(),
-    pw:$("#suPw").value,
-    createdAt:new Date().toISOString()
-  };
-  store.users=users; store.current=id; store.auto=false; enterApp(id);
+// ----- 회원가입: MariaDB users 테이블에 저장 -----
+$("#signupBtn")?.addEventListener('click', async () => {
+  const err = $("#signupErr");
+  err.style.display = 'none';
+
+  const id       = $("#suId").value.trim();
+  const company  = $("#suCompany").value.trim();
+  const phone    = $("#suPhone").value.trim();
+  const email    = $("#suEmail").value.trim();
+  const pw       = $("#suPw").value;
+  const pw2      = $("#suPw2").value;
+
+  if(!$("#agree")?.checked){
+    return showErr(err,"개인정보 수집·이용에 동의해 주세요.");
+  }
+  if(pw !== pw2){
+    return showErr(err,"비밀번호가 일치하지 않습니다.");
+  }
+
+  try {
+    const res = await fetch('signup.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, company, phone, email, pw })
+    });
+    const data = await res.json();
+
+    if(!data.ok){
+      return showErr(err, data.msg || "회원가입에 실패했습니다.");
+    }
+
+    alert("회원가입이 완료되었습니다. 이제 로그인해 주세요.");
+    // 바로 앱으로 들어가고 싶으면:
+    // store.current = id;
+    // enterApp(id);
+    view('login');  // 로그인 화면으로 전환
+  } catch (e) {
+    console.error(e);
+    showErr(err,"서버 통신 오류가 발생했습니다.");
+  }
 });
 
-function showErr(n,m){ if(!n) return; n.textContent=m; n.style.display='block'; }
-$("#toSignup")?.addEventListener('click',()=>view('signup'));
-$("#toLogin")?.addEventListener('click',()=>view('login'));
+
+function showErr(n, m){
+  if (!n) return;
+  n.textContent = m;
+  n.style.display = 'block';
+}
+
+$("#toSignup")?.addEventListener('click', () => view('signup'));
+$("#toLogin")?.addEventListener('click',  () => view('login'));
+
 
 /* 개인정보 동의 모달 */
 const consentModal = document.getElementById('consentModal');
@@ -509,6 +560,7 @@ function renderCoordList(){
 function logCoord(msg){ const log=document.getElementById('coordLog'); if(log) log.innerHTML=msg; }
 
 /* ==== 결과값 추출 전용 라이브러리 (BOM/좌표와 분리) ==== */
+/* ==== 결과값 추출 전용 라이브러리 (BOM/좌표와 분리) ==== */
 const extractLib = {
   _key: 'extractLibrary',
   all(){
@@ -517,13 +569,12 @@ const extractLib = {
   save(list){
     localStorage.setItem(this._key, JSON.stringify(list));
   },
-  // ✅ 전체 삭제용
   clear(){
     this.save([]);
   },
   setFromSelection(type, ids){
     const kind = (type === 'bom') ? 'BOM' : 'COORD';
-    const src  = getLibAll(type); // bomLib.all() 또는 coordLib.all()
+    const src  = getLibAll(type);
 
     const current = this.all();
     const others  = current.filter(x => x.kind !== kind);
@@ -541,6 +592,13 @@ const extractLib = {
   },
   remove(id, kind){
     const list = this.all().filter(x => !(x.id === id && x.kind === kind));
+    this.save(list);
+  },
+
+  // 🔹 txt.js 에서 호출할 추가 메서드
+  add(meta){
+    const list = this.all();
+    list.push(meta);
     this.save(list);
   }
 };
@@ -719,6 +777,18 @@ function showExtractDashboard(){
   document.getElementById('btnPickBOM')?.addEventListener('click', ()=> openSelectModal('bom'));
   document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
   document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
+
+  // 🔹 메모장으로 출력하기 (Top/Bot txt 생성)
+  document.getElementById('btnExtractTxt')?.addEventListener('click', () => {
+  console.log('[app.js] btnExtractTxt click, SMTText =', window.SMTText);
+
+  if (!window.SMTText || typeof window.SMTText.runFromSelectedToTxt !== 'function') {
+    alert('SMTText.runFromSelectedToTxt 함수가 없습니다.\n(콘솔 로그를 캡처해서 보여 주세요)');
+    return;
+  }
+
+  window.SMTText.runFromSelectedToTxt();
+});
 
   // ✅ 결과값 전체 삭제 (extractLib만)
   document.getElementById('btnExtractClear')?.addEventListener('click', ()=>{
