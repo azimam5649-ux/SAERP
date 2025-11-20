@@ -4,7 +4,8 @@
   'use strict';
 
   // ★ NAS API 기본 URL (DDNS + 경로 맞게 수정)
-  const API_BASE = 'https://my-saerp.synology.me/saerp/api';
+  // NAS 내부에서 접속할 때
+const API_BASE = 'http://172.30.1.42/saerp/api';
   // 예: https://my-saerp.synology.me/saerp/api
 
   // 관리자 테스트 계정 (DB와 무관)

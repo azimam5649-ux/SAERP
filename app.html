@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SAERP SMT 대시보드</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #020617;
+      --bg-shell: #020617;
+      --bg-sidebar: #020617;
+      --bg-card: #020617;
+      --border-subtle: #1f2937;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, .12);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+    }
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      background:radial-gradient(circle at top,#0f172a 0,#020617 45%,#000 100%);
+      color:var(--text-main);
+      font:14px/1.5 system-ui,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .stack{
+      width:100%;
+      max-width:1200px;
+      background:var(--bg-shell);
+      border-radius:18px;
+      border:1px solid rgba(148,163,184,.4);
+      box-shadow:0 18px 50px rgba(15,23,42,.9);
+      display:flex;
+      overflow:hidden;
+    }
+
+    /* dummy 카드 (login / signup 자리만 채워줌) */
+    #loginCard,
+    #signupCard{
+      display:none;
+    }
+
+    #appCard{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-height:620px;
+    }
+
+    .app-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--border-subtle);
+      background:linear-gradient(to right,#020617,#020617,#020617);
+    }
+    .app-title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .app-title h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.03em;
+    }
+    .app-title span{
+      font-size:12px;
+      color:var(--text-muted);
+    }
+
+    .app-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    button, .btn{
+      font:inherit;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.6);
+      background:#020617;
+      color:inherit;
+      padding:6px 12px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    button:hover, .btn:hover{
+      border-color:var(--accent);
+      background:var(--accent-soft);
+    }
+    #themeToggle{
+      font-size:12px;
+    }
+
+    .app-main{
+      display:flex;
+      min-height:0;
+      flex:1;
+    }
+
+    /* 사이드바 */
+    .sidebar{
+      width:210px;
+      border-right:1px solid var(--border-subtle);
+      background:radial-gradient(circle at top left,#020617 0,#020617 40%,#020617 100%);
+      padding:14px 10px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .sidebar-section-title{
+      font-size:11px;
+      text-transform:uppercase;
+      color:var(--text-muted);
+      letter-spacing:.16em;
+      padding:0 6px;
+    }
+    .menu{
+      list-style:none;
+      padding:0;
+      margin:0;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .menu-item{
+      position:relative;
+      border-radius:10px;
+      overflow:visible;
+    }
+    .menu-item > .menu-label{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:6px;
+      padding:7px 9px;
+      border-radius:10px;
+      cursor:pointer;
+      color:var(--text-main);
+      border:1px solid transparent;
+      background:transparent;
+    }
+    .menu-item > .menu-label span{
+      font-size:13px;
+    }
+    .menu-item > .menu-label small{
+      font-size:11px;
+      color:var(--text-muted);
+    }
+    .menu-item:hover > .menu-label{
+      background:rgba(15,23,42,.9);
+      border-color:rgba(148,163,184,.6);
+    }
+    .menu-item.open > .menu-label{
+      background:rgba(15,23,42,1);
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px rgba(56,189,248,.25);
+    }
+
+    .submenu{
+      position:static; /* app.js 는 position 신경 안 씀 */
+      margin-top:4px;
+      padding:4px;
+      border-radius:10px;
+      background:#020617;
+      border:1px solid rgba(31,41,55,.9);
+      display:none;
+    }
+    .menu-item.open .submenu{
+      display:block;
+    }
+    .submenu a{
+      display:block;
+      padding:6px 8px;
+      border-radius:8px;
+      font-size:13px;
+      color:var(--text-main);
+      text-decoration:none;
+    }
+    .submenu a:hover{
+      background:rgba(15,23,42,1);
+      color:#e5e7eb;
+    }
+
+    /* 본문 영역 */
+    .app-body{
+      flex:1;
+      padding:10px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+
+    #dashboard{
+      flex:1;
+      border-radius:14px;
+      border:1px dashed rgba(55,65,81,.7);
+      background:radial-gradient(circle at top,#020617 0,#020617 40%,#020617 100%);
+      padding:12px;
+      overflow:auto;
+    }
+    .muted{
+      color:var(--text-muted);
+      font-size:12px;
+    }
+
+    /* 테이블 기본 */
+    .table-wrap{
+      border-radius:12px;
+      border:1px solid rgba(55,65,81,.9);
+      overflow:hidden;
+      background:#020617;
+    }
+    table.table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    table.table thead{
+      background:#030712;
+    }
+    table.table th,
+    table.table td{
+      padding:6px 8px;
+      border-bottom:1px solid rgba(31,41,55,.9);
+    }
+    table.table tbody tr:hover{
+      background:rgba(15,23,42,.9);
+    }
+
+    .btn-mini{
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.7);
+      background:#020617;
+      color:var(--text-main);
+      cursor:pointer;
+    }
+    .btn-mini:hover{
+      border-color:var(--accent);
+      background:var(--accent-soft);
+    }
+
+    /* 선택 모달 */
+    #selectModal{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,.75);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+    }
+    #selectModal[open]{
+      display:flex;
+    }
+    .select-panel{
+      width:520px;
+      max-height:80vh;
+      background:#020617;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,.5);
+      box-shadow:0 18px 40px rgba(15,23,42,1);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .select-header{
+      padding:10px 14px;
+      border-bottom:1px solid rgba(31,41,55,.9);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    #selectTitle{
+      font-size:14px;
+      font-weight:600;
+    }
+    .select-search{
+      display:flex;
+      align-items:center;
+      padding:0 14px 8px;
+      gap:6px;
+      border-bottom:1px solid rgba(31,41,55,.7);
+    }
+    .select-search input{
+      flex:1;
+      padding:5px 8px;
+      border-radius:999px;
+      border:1px solid rgba(55,65,81,1);
+      background:#020617;
+      color:var(--text-main);
+      font-size:12px;
+    }
+    .select-body{
+      padding:8px 14px 6px;
+      flex:1;
+      overflow:auto;
+    }
+    .select-footer{
+      border-top:1px solid rgba(31,41,55,.9);
+      padding:8px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    #selectEmpty{
+      font-size:12px;
+      color:var(--text-muted);
+      padding:12px 0;
+      text-align:center;
+    }
+    #selectTools{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    #selectCount{
+      font-size:12px;
+      color:var(--text-muted);
+    }
+    .select-btn-row{
+      display:flex;
+      gap:6px;
+    }
+
+    input[type="checkbox"]{
+      accent-color:#38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="stack">
+    <!-- loginCard / signupCard 는 app.js 가 참조하므로 빈 섹션으로 둠 -->
+    <section id="loginCard"></section>
+    <section id="signupCard"></section>
+
+    <!-- 실제 메인 앱 카드 -->
+    <section id="appCard">
+      <header class="app-header">
+        <div class="app-title">
+          <h1>SAERP SMT 대시보드</h1>
+          <span>NAS 서버에 BOM / 좌표데이터 / 결과값을 관리하는 전용 화면</span>
+        </div>
+        <div class="app-actions">
+          <button id="themeToggle">🌙 다크</button>
+          <button id="logoutBtn">로그아웃</button>
+        </div>
+      </header>
+
+      <div class="app-main">
+        <!-- 사이드바 -->
+        <aside class="sidebar">
+          <div class="sidebar-section-title">Automation</div>
+          <ul class="menu">
+            <li id="menu-automation" class="menu-item">
+              <div class="menu-label">
+                <span>SMT 매크로 자동화</span>
+                <small>파일 등록 · 결과 출력</small>
+              </div>
+              <div class="submenu" aria-label="SMT 매크로 자동화 메뉴">
+                <a href="#" id="mn-bom">BOM 등록</a>
+                <a href="#" id="mn-coords">좌표데이터 등록</a>
+                <a href="#" id="mn-extract">결과값 추출</a>
+              </div>
+            </li>
+          </ul>
+        </aside>
+
+        <!-- 본문 -->
+        <main class="app-body" id="appBody">
+          <div id="fileResult" class="muted"></div>
+          <div id="coordsContainer" class="muted"></div>
+
+          <div id="dashboard">
+            <p class="muted">
+              좌측 <b>SMT 매크로 자동화</b> 메뉴에서<br />
+              <b>BOM 등록 / 좌표데이터 등록 / 결과값 추출</b>을 선택해 주세요.
+            </p>
+          </div>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <!-- BOM / 좌표 파일 선택용 숨김 input들 -->
+  <input type="file" id="pickBOMFiles" style="display:none" multiple />
+  <input type="file" id="pickBOMEdit" style="display:none" />
+  <input type="file" id="pickCoordFiles" style="display:none" multiple />
+  <input type="file" id="pickCoordEdit" style="display:none" />
+
+  <!-- 결과값 선택 모달 -->
+  <div id="selectModal">
+    <div class="select-panel" role="dialog" aria-modal="true">
+      <div class="select-header">
+        <div id="selectTitle">파일 선택</div>
+        <button type="button" id="selectClose" class="btn-mini">✕</button>
+      </div>
+      <div class="select-search">
+        <input id="selectSearch" type="text" placeholder="파일명 검색…" />
+      </div>
+      <div class="select-body">
+        <div id="selectEmpty" class="muted">등록된 파일이 없습니다.</div>
+
+        <div id="selectTools">
+          <button type="button" id="btnSelectAll" class="btn-mini">전체 선택</button>
+          <button type="button" id="btnSelectNone" class="btn-mini">전체 해제</button>
+          <span id="selectCount" class="muted">0/0개 선택</span>
+        </div>
+
+        <div class="table-wrap" style="margin-top:8px;">
+          <table class="table" id="selectTable">
+            <thead>
+              <tr>
+                <th style="width:42px;">선택</th>
+                <th>파일명</th>
+                <th style="width:90px;">크기</th>
+                <th style="width:150px;">등록/수정일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- app.js 에서 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="select-footer">
+        <div class="muted">선택 후 &ldquo;확인&rdquo;을 누르면 적용됩니다.</div>
+        <div class="select-btn-row">
+          <button type="button" id="selectCancel" class="btn-mini">취소</button>
+          <button type="button" id="selectApply" class="btn-mini">확인</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 라이브러리 및 앱 스크립트 (NAS 절대 경로 사용) -->
+  <script src="/saerp/xlsx.full.min.js"></script>
+  <script src="/saerp/smt_extract.js"></script>
+  <script src="/saerp/txt.js"></script>
+  <script src="/saerp/app.js"></script>
+
+  <script>
+    if (typeof view === 'function') {
+      view('app');   // 바로 메인 화면
+    }
+
+    document.getElementById('mn-bom')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      if (typeof showBOMDashboard === 'function') showBOMDashboard();
+    });
+    document.getElementById('mn-coords')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      if (typeof showCoordDashboard === 'function') showCoordDashboard();
+    });
+    document.getElementById('mn-extract')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      if (typeof showExtractDashboard === 'function') showExtractDashboard();
+    });
+  </script>
+</body>
+</html>
+

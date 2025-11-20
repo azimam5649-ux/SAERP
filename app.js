@@ -43,6 +43,7 @@ const store = {
   get auto(){return localStorage.getItem('autoLogin')==='true'},
   set auto(v){localStorage.setItem('autoLogin',v?'true':'false')}
 };
+
 /* ==== 로그인/회원가입 (MariaDB 연동) ==== */
 
 const $ = s => document.querySelector(s);
@@ -100,12 +101,11 @@ async function handleLogin(){
 $("#loginBtn")?.addEventListener('click',e=>{e.preventDefault();handleLogin()});
 $("#loginForm")?.addEventListener('submit',e=>{e.preventDefault();handleLogin()});
 
-
 $("#logoutBtn")?.addEventListener('click', () => {
   currentUser = null;
   $("#loginId").value = "";
   $("#loginPw").value = "";
-  $("#autoLogin").checked = false;  // UI만 남겨두고 기능은 사용 안 함
+  $("#autoLogin").checked = false;
   view('login');
 });
 
@@ -157,16 +157,12 @@ $("#signupBtn")?.addEventListener('click', async () => {
     }
 
     alert("회원가입이 완료되었습니다. 이제 로그인해 주세요.");
-    // 바로 앱으로 들어가고 싶으면:
-    // store.current = id;
-    // enterApp(id);
-    view('login');  // 로그인 화면으로 전환
+    view('login');
   } catch (e) {
     console.error(e);
     showErr(err,"서버 통신 오류가 발생했습니다.");
   }
 });
-
 
 function showErr(n, m){
   if (!n) return;
@@ -177,40 +173,56 @@ function showErr(n, m){
 $("#toSignup")?.addEventListener('click', () => view('signup'));
 $("#toLogin")?.addEventListener('click',  () => view('login'));
 
-
 /* 개인정보 동의 모달 */
 const consentModal = document.getElementById('consentModal');
 document.getElementById('openConsent')?.addEventListener('click', ()=>consentModal.setAttribute('open',''));
 document.getElementById('closeConsent')?.addEventListener('click', ()=>consentModal.removeAttribute('open'));
 document.getElementById('declineConsent')?.addEventListener('click', ()=>{
-  const agree=document.getElementById('agree'); if(agree) agree.checked=false; enableIfValid(); consentModal.removeAttribute('open');
+  const agree=document.getElementById('agree'); if(agree) agree.checked=false;
+  enableIfValid(); consentModal.removeAttribute('open');
 });
 document.getElementById('acceptConsent')?.addEventListener('click', ()=>{
-  const agree=document.getElementById('agree'); if(agree) agree.checked=true; enableIfValid(); consentModal.removeAttribute('open');
+  const agree=document.getElementById('agree'); if(agree) agree.checked=true;
+  enableIfValid(); consentModal.removeAttribute('open');
 });
-consentModal?.addEventListener('click', e=>{ if(e.target===consentModal) consentModal.removeAttribute('open'); });
+consentModal?.addEventListener('click', e=>{
+  if(e.target===consentModal) consentModal.removeAttribute('open');
+});
 
 /* ==== 서브메뉴 유지 ==== */
 (function keepSubmenuUntilOutsideClick(){
-  const menuItem=document.getElementById('menu-automation'); if(!menuItem) return;
+  const menuItem=document.getElementById('menu-automation'); 
+  if(!menuItem) return;
   const submenu=menuItem.querySelector('.submenu');
-  const open=()=>menuItem.classList.add('open');
+
+  const open = ()=>menuItem.classList.add('open');
   const close=()=>menuItem.classList.remove('open');
-  menuItem.addEventListener('mouseenter',open); submenu?.addEventListener('mouseenter',open);
+
+  menuItem.addEventListener('mouseenter', open);
+  submenu?.addEventListener('mouseenter', open);
+
   menuItem.addEventListener('click',(e)=>{open();e.stopPropagation()});
   submenu?.addEventListener('click',e=>e.stopPropagation());
-  document.addEventListener('click',e=>{ if(!menuItem.contains(e.target)) close(); },true);
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
-  document.addEventListener('touchstart',e=>{ if(!menuItem.contains(e.target)) close(); },{capture:true,passive:true});
+
+  document.addEventListener('click',e=>{
+    if(!menuItem.contains(e.target)) close();
+  },true);
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') close();
+  });
+
+  document.addEventListener('touchstart',e=>{
+    if(!menuItem.contains(e.target)) close();
+  },{capture:true,passive:true});
 })();
 
 /* ==== 공통 유틸 ==== */
-/** ⛔ 폴더 선택 기능 포기: 항상 null 반환 → 무조건 브라우저 다운로드만 사용 */
+/** ⛔ 폴더 선택 기능 포기: 항상 null 반환 */
 async function pickTargetDirectory(){
   return null;
 }
 
-// (안 쓰이지만 남겨둠)
 async function ensureSubfolder(parent,name){
   try{
     return await parent.getDirectoryHandle(name,{create:true});
@@ -219,6 +231,7 @@ async function ensureSubfolder(parent,name){
     return parent;
   }
 }
+
 async function saveFileToDirectory(dirHandle,file,subFolder){
   try{
     const fh = await dirHandle.getFileHandle(file.name,{create:true});
@@ -233,38 +246,62 @@ async function saveFileToDirectory(dirHandle,file,subFolder){
 }
 
 function forceDownload(file,prefix){
-  const url=URL.createObjectURL(file); const a=document.createElement('a');
-  a.href=url; a.download=`${prefix?prefix+'-':''}${file.name}`;
-  document.body.appendChild(a); a.click();
+  const url=URL.createObjectURL(file);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`${prefix?prefix+'-':''}${file.name}`;
+  document.body.appendChild(a);
+  a.click();
   setTimeout(()=>{
-    document.body.removeChild(a);URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },0);
 }
 
 /* ==== BOM 라이브러리 ==== */
 const bomLib = {
   _key:'bomLibrary',
-  all(){ return JSON.parse(localStorage.getItem(this._key)||'[]'); },
-  save(list){ localStorage.setItem(this._key, JSON.stringify(list)); },
+  all(){
+    return JSON.parse(localStorage.getItem(this._key)||'[]');
+  },
+  save(list){
+    localStorage.setItem(this._key, JSON.stringify(list));
+  },
   add(files){
-    const list=this.all(); const now=new Date().toISOString();
+    const list=this.all(); 
+    const now=new Date().toISOString();
     for(const f of files){
-      list.push({ id:crypto.randomUUID(), name:f.name, size:f.size, type:f.type, savedAt:now, updatedAt:null });
+      list.push({
+        id:crypto.randomUUID(),
+        name:f.name,
+        size:f.size,
+        type:f.type,
+        savedAt:now,
+        updatedAt:null
+      });
     }
     this.save(list);
   },
   update(id, file){
-    const list=this.all(); const i=list.findIndex(x=>x.id===id);
+    const list=this.all();
+    const i=list.findIndex(x=>x.id===id);
     if(i>-1){
-      list[i]={...list[i], name:file.name, size:file.size, type:file.type, updatedAt:new Date().toISOString()};
+      list[i]={
+        ...list[i],
+        name:file.name,
+        size:file.size,
+        type:file.type,
+        updatedAt:new Date().toISOString()
+      };
       this.save(list);
     }
   },
   remove(id){
-    const list=this.all().filter(x=>x.id!==id); this.save(list);
+    const list=this.all().filter(x=>x.id!==id);
+    this.save(list);
   }
 };
-window.bomLib = bomLib; // 전역 alias
+window.bomLib = bomLib;
 
 function showBOMDashboard(){
   setBodyHTML(`
@@ -274,6 +311,7 @@ function showBOMDashboard(){
         <p class="card-title">BOM 등록</p>
         <p class="card-desc">엑셀/CSV 파일을 선택해 저장</p>
       </button>
+
       <button class="card-btn" id="btnHome">
         <p class="card-title">대시보드</p>
         <p class="card-desc">홈으로 돌아가기</p>
@@ -282,7 +320,6 @@ function showBOMDashboard(){
 
     <div id="bomLog" class="muted" style="margin-top:12px;"></div>
 
-    <!-- ✅ BOM 선택 삭제 / 전체 삭제 버튼 영역 -->
     <div style="margin:8px 0; text-align:right;">
       <button class="btn-mini" id="btnBOMDeleteSelected">선택 삭제</button>
       <button class="btn-mini" id="btnBOMClear">전체 삭제</button>
@@ -305,29 +342,33 @@ function showBOMDashboard(){
     </div>
   `);
 
-  document.getElementById('bomLog').textContent = 'BOM 등록 양식에 맞춰서 등록 부탁드리겠습니다!';
+  document.getElementById('bomLog').textContent =
+    'BOM 등록 양식에 맞춰서 등록 부탁드리겠습니다!';
 
   document.getElementById('btnBOMReg').addEventListener('click',()=>{
-    document.getElementById('pickBOMFiles').value=''; document.getElementById('pickBOMFiles').click();
+    document.getElementById('pickBOMFiles').value='';
+    document.getElementById('pickBOMFiles').click();
   });
-  document.getElementById('btnHome').addEventListener('click',()=>{ setBodyHTML(''); });
 
-  // ✅ BOM 전체 삭제 (BOM만)
+  document.getElementById('btnHome').addEventListener('click',()=>{
+    setBodyHTML('');
+  });
+
   document.getElementById('btnBOMClear').addEventListener('click', ()=>{
-    if(!confirm('BOM 등록 목록을 모두 삭제할까요?\n(좌표데이터 / 결과값 추출에는 영향을 주지 않습니다)')) return;
-    bomLib.save([]);  // BOM만 싹 비움
+    if(!confirm('BOM 등록 목록을 모두 삭제할까요?')) return;
+    bomLib.save([]);
     renderBOMList();
   });
 
-  // ✅ BOM 선택 삭제
   document.getElementById('btnBOMDeleteSelected').addEventListener('click', ()=>{
     const tbody = document.querySelector('#bomTable tbody');
     const checked = [...tbody.querySelectorAll('.bom-row-check:checked')];
     if(!checked.length){
-      alert('삭제할 BOM 항목을 선택하세요.');
+      alert('삭제할 항목을 선택하세요.');
       return;
     }
-    if(!confirm(`${checked.length}개 BOM 파일을 삭제할까요?\n(이 메뉴에 등록된 BOM만 삭제됩니다)`)) return;
+
+    if(!confirm(`${checked.length}개 항목을 삭제할까요?`)) return;
 
     const ids = checked.map(cb => cb.closest('tr').dataset.id);
     const left = bomLib.all().filter(r => !ids.includes(r.id));
@@ -341,45 +382,53 @@ function showBOMDashboard(){
 function renderBOMList(){
   const tbody = document.querySelector('#bomTable tbody');
   if(!tbody) return;
+
   const list = bomLib.all();
   const fmt = n => (n/1024).toFixed(1)+' KB';
-  const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const esc = s => 
+    s.replace(/[&<>"]/g,
+      m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
-  tbody.innerHTML = list.length ? list.map(r=>`
-    <tr data-id="${r.id}">
-      <td><input type="checkbox" class="bom-row-check"></td>
-      <td>${esc(r.name)}</td>
-      <td>${fmt(r.size)}</td>
-      <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
-      <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
-      <td>
-        <button class="btn-mini act-edit">수정</button>
-        <button class="btn-mini act-del">삭제</button>
-      </td>
-    </tr>
-  `).join('') : `
-    <tr>
-      <td colspan="6" class="muted">저장된 BOM 파일이 없습니다.</td>
-    </tr>
-  `;
+  tbody.innerHTML = list.length
+    ? list.map(r=>`
+        <tr data-id="${r.id}">
+          <td><input type="checkbox" class="bom-row-check"></td>
+          <td>${esc(r.name)}</td>
+          <td>${fmt(r.size)}</td>
+          <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>
+            <button class="btn-mini act-edit">수정</button>
+            <button class="btn-mini act-del">삭제</button>
+          </td>
+        </tr>
+      `).join('')
+    : `
+      <tr>
+        <td colspan="6" class="muted">저장된 BOM 파일이 없습니다.</td>
+      </tr>
+    `;
 
   // 수정
   tbody.querySelectorAll('.act-edit').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id = btn.closest('tr').dataset.id;
       const pick = document.getElementById('pickBOMEdit');
+
       pick.onchange = e=>{
-        const f = e.target.files?.[0]; if(!f) return;
+        const f = e.target.files?.[0];
+        if(!f) return;
         bomLib.update(id, f);
         renderBOMList();
-        logBom(`✏️ 수정 완료: ${f.name}`);
         pick.value='';
       };
-      pick.value=''; pick.click();
+
+      pick.value='';
+      pick.click();
     });
   });
 
-  // 단일 삭제 버튼 (기존 동작 유지)
+  // 삭제
   tbody.querySelectorAll('.act-del').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id = btn.closest('tr').dataset.id;
@@ -388,7 +437,7 @@ function renderBOMList(){
     });
   });
 
-  // ✅ BOM 전체 선택 체크박스
+  // 전체 선택
   const checkAll = document.getElementById('bomCheckAll');
   if(checkAll){
     checkAll.checked = false;
@@ -400,32 +449,55 @@ function renderBOMList(){
   }
 }
 
-function logBom(msg){ const log=document.getElementById('bomLog'); if(log) log.innerHTML=msg; }
+function logBom(msg){
+  const log=document.getElementById('bomLog');
+  if(log) log.innerHTML=msg;
+}
 
 /* ==== 좌표데이터 라이브러리 ==== */
 const coordLib = {
   _key:'coordLibrary',
-  all(){ return JSON.parse(localStorage.getItem(this._key)||'[]'); },
-  save(list){ localStorage.setItem(this._key, JSON.stringify(list)); },
+  all(){
+    return JSON.parse(localStorage.getItem(this._key)||'[]');
+  },
+  save(list){
+    localStorage.setItem(this._key, JSON.stringify(list));
+  },
   add(files){
-    const list=this.all(); const now=new Date().toISOString();
+    const list=this.all();
+    const now=new Date().toISOString();
     for(const f of files){
-      list.push({ id:crypto.randomUUID(), name:f.name, size:f.size, type:f.type, savedAt:now, updatedAt:null });
+      list.push({
+        id:crypto.randomUUID(),
+        name:f.name,
+        size:f.size,
+        type:f.type,
+        savedAt:now,
+        updatedAt:null
+      });
     }
     this.save(list);
   },
   update(id, file){
-    const list=this.all(); const i=list.findIndex(x=>x.id===id);
+    const list=this.all();
+    const i=list.findIndex(x=>x.id===id);
     if(i>-1){
-      list[i]={...list[i], name:file.name, size:file.size, type:file.type, updatedAt:new Date().toISOString()};
+      list[i] = {
+        ...list[i],
+        name:file.name,
+        size:file.size,
+        type:file.type,
+        updatedAt:new Date().toISOString()
+      };
       this.save(list);
     }
   },
   remove(id){
-    const list=this.all().filter(x=>x.id!==id); this.save(list);
+    const list=this.all().filter(x=>x.id!==id);
+    this.save(list);
   }
 };
-window.coordLib = coordLib; // 전역 alias
+window.coordLib = coordLib;
 
 function showCoordDashboard(){
   setBodyHTML(`
@@ -435,6 +507,7 @@ function showCoordDashboard(){
         <p class="card-title">좌표데이터 등록</p>
         <p class="card-desc">엑셀/CSV 파일을 선택해 저장</p>
       </button>
+
       <button class="card-btn" id="btnHome2">
         <p class="card-title">대시보드</p>
         <p class="card-desc">홈으로 돌아가기</p>
@@ -443,7 +516,6 @@ function showCoordDashboard(){
 
     <div id="coordLog" class="muted" style="margin-top:10px;"></div>
 
-    <!-- ✅ 좌표데이터 선택 삭제 / 전체 삭제 -->
     <div style="margin:8px 0; text-align:right;">
       <button class="btn-mini" id="btnCoordDeleteSelected">선택 삭제</button>
       <button class="btn-mini" id="btnCoordClear">전체 삭제</button>
@@ -465,27 +537,34 @@ function showCoordDashboard(){
       </table>
     </div>
   `);
-  document.getElementById('btnCoordReg').addEventListener('click',()=>{
-    document.getElementById('pickCoordFiles').value=''; document.getElementById('pickCoordFiles').click();
-  });
-  document.getElementById('btnHome2').addEventListener('click',()=>{ setBodyHTML(''); });
 
-  // ✅ 좌표 전체 삭제 (coordLib만)
+  document.getElementById('btnCoordReg').addEventListener('click',()=>{
+    document.getElementById('pickCoordFiles').value='';
+    document.getElementById('pickCoordFiles').click();
+  });
+
+  document.getElementById('btnHome2').addEventListener('click',()=>{
+    setBodyHTML('');
+  });
+
+  // 전체 삭제
   document.getElementById('btnCoordClear').addEventListener('click', ()=>{
-    if(!confirm('좌표데이터 등록 목록을 모두 삭제할까요?\n(BOM / 결과값 추출에는 영향을 주지 않습니다)')) return;
+    if(!confirm('좌표데이터 등록 목록을 모두 삭제할까요?')) return;
     coordLib.save([]);
     renderCoordList();
   });
 
-  // ✅ 좌표 선택 삭제
+  // 선택 삭제
   document.getElementById('btnCoordDeleteSelected').addEventListener('click', ()=>{
     const tbody = document.querySelector('#coordTable tbody');
     const checked = [...tbody.querySelectorAll('.coord-row-check:checked')];
+
     if(!checked.length){
-      alert('삭제할 좌표데이터 항목을 선택하세요.');
+      alert('삭제할 항목을 선택하세요.');
       return;
     }
-    if(!confirm(`${checked.length}개 좌표데이터 파일을 삭제할까요?\n(이 메뉴에 등록된 좌표데이터만 삭제됩니다)`)) return;
+
+    if(!confirm(`${checked.length}개 항목을 삭제할까요?`)) return;
 
     const ids = checked.map(cb => cb.closest('tr').dataset.id);
     const left = coordLib.all().filter(r => !ids.includes(r.id));
@@ -499,44 +578,51 @@ function showCoordDashboard(){
 function renderCoordList(){
   const tbody = document.querySelector('#coordTable tbody');
   if(!tbody) return;
+
   const list = coordLib.all();
   const fmt = n => (n/1024).toFixed(1)+' KB';
-  const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const esc = s =>
+    s.replace(/[&<>"]/g,
+      m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
-  tbody.innerHTML = list.length ? list.map(r=>`
-    <tr data-id="${r.id}">
-      <td><input type="checkbox" class="coord-row-check"></td>
-      <td>${esc(r.name)}</td>
-      <td>${fmt(r.size)}</td>
-      <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
-      <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
-      <td>
-        <button class="btn-mini act-edit2">수정</button>
-        <button class="btn-mini act-del2">삭제</button>
-      </td>
-    </tr>
-  `).join('') : `
-    <tr>
-      <td colspan="6" class="muted">저장된 좌표데이터 파일이 없습니다.</td>
-    </tr>
-  `;
+  tbody.innerHTML = list.length
+    ? list.map(r=>`
+        <tr data-id="${r.id}">
+          <td><input type="checkbox" class="coord-row-check"></td>
+          <td>${esc(r.name)}</td>
+          <td>${fmt(r.size)}</td>
+          <td>${r.savedAt ? r.savedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>${r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19) : '-'}</td>
+          <td>
+            <button class="btn-mini act-edit2">수정</button>
+            <button class="btn-mini act-del2">삭제</button>
+          </td>
+        </tr>
+      `).join('')
+    : `
+      <tr>
+        <td colspan="6" class="muted">저장된 좌표데이터 파일이 없습니다.</td>
+      </tr>
+    `;
 
-  // 수정
   tbody.querySelectorAll('.act-edit2').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id = btn.closest('tr').dataset.id;
       const pick = document.getElementById('pickCoordEdit');
+
       pick.onchange = e=>{
-        const f = e.target.files?.[0]; if(!f) return;
+        const f = e.target.files?.[0];
+        if(!f) return;
         coordLib.update(id, f);
         renderCoordList();
         pick.value='';
       };
-      pick.value=''; pick.click();
+
+      pick.value='';
+      pick.click();
     });
   });
 
-  // 단일 삭제
   tbody.querySelectorAll('.act-del2').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id = btn.closest('tr').dataset.id;
@@ -545,7 +631,6 @@ function renderCoordList(){
     });
   });
 
-  // ✅ 좌표 전체 선택 체크박스
   const checkAll = document.getElementById('coordCheckAll');
   if(checkAll){
     checkAll.checked = false;
@@ -557,21 +642,27 @@ function renderCoordList(){
   }
 }
 
-function logCoord(msg){ const log=document.getElementById('coordLog'); if(log) log.innerHTML=msg; }
+function logCoord(msg){
+  const log=document.getElementById('coordLog');
+  if(log) log.innerHTML=msg;
+}
 
-/* ==== 결과값 추출 전용 라이브러리 (BOM/좌표와 분리) ==== */
-/* ==== 결과값 추출 전용 라이브러리 (BOM/좌표와 분리) ==== */
+/* ==== 결과값 추출 전용 라이브러리 ==== */
 const extractLib = {
   _key: 'extractLibrary',
+
   all(){
     return JSON.parse(localStorage.getItem(this._key) || '[]');
   },
+
   save(list){
     localStorage.setItem(this._key, JSON.stringify(list));
   },
+
   clear(){
     this.save([]);
   },
+
   setFromSelection(type, ids){
     const kind = (type === 'bom') ? 'BOM' : 'COORD';
     const src  = getLibAll(type);
@@ -590,12 +681,12 @@ const extractLib = {
 
     this.save([...others, ...selected]);
   },
+
   remove(id, kind){
     const list = this.all().filter(x => !(x.id === id && x.kind === kind));
     this.save(list);
   },
 
-  // 🔹 txt.js 에서 호출할 추가 메서드
   add(meta){
     const list = this.all();
     list.push(meta);
@@ -604,16 +695,16 @@ const extractLib = {
 };
 window.extractLib = extractLib;
 
-/* ==== 파일 선택 핸들러 ==== */
+/* ==== 파일 선택 핸들러 (BOM, Coord) ==== */
 document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
-  const files = Array.from(e.target.files||[]); if(!files.length) return;
+  const files = Array.from(e.target.files||[]);
+  if(!files.length) return;
+
   logBom(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>브라우저 다운로드 폴더에 저장합니다…`);
 
-  // 👉 폴더 선택 포기: 무조건 브라우저 다운로드
   files.forEach(f=>forceDownload(f,'BOM'));
   logBom(`⬇️ 브라우저 다운로드 폴더(기본 위치)에 저장했습니다.`);
 
-  // 🔴 BOM 파싱 + 라이브러리에 parsedBOM까지 저장
   const list = bomLib.all();
   const now  = new Date().toISOString();
 
@@ -636,8 +727,9 @@ document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
         type: f.type,
         savedAt: now,
         updatedAt: null,
-        parsedBOM: parsedBOM,   // Set 포함이지만 지금은 그대로 저장
+        parsedBOM
       });
+
     } catch (err) {
       console.error('BOM 파싱 실패:', f.name, err);
       alert('BOM 파싱 중 오류가 발생했습니다.\n파일명: ' + f.name);
@@ -649,14 +741,14 @@ document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
 });
 
 document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
-  const files = Array.from(e.target.files||[]); if(!files.length) return;
+  const files = Array.from(e.target.files||[]);
+  if(!files.length) return;
+
   logCoord(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>브라우저 다운로드 폴더에 저장합니다…`);
 
-  // 👉 폴더 선택 포기: 무조건 브라우저 다운로드
   files.forEach(f=>forceDownload(f,'COORD'));
   logCoord(`⬇️ 브라우저 다운로드 폴더(기본 위치)에 저장했습니다.`);
 
-  // 🔴 좌표 파싱 + coordLib 에 coordMap 포함해서 저장 (Map → Object 변환!!)
   const list = coordLib.all();
   const now  = new Date().toISOString();
 
@@ -670,13 +762,9 @@ document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
         break;
       }
 
-      // 1) Map으로 파싱
       const coordMap = SMTExtract.parseCoordWorkbook(wb, { fileName: f.name });
-
-      // 2) localStorage에 저장 가능하도록 순수 객체로 변환
       const coordObj = Object.fromEntries(coordMap);
 
-      // 3) coordMap 대신 coordObj 저장
       list.push({
         id: crypto.randomUUID(),
         name: f.name,
@@ -684,8 +772,9 @@ document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
         type: f.type,
         savedAt: now,
         updatedAt: null,
-        coordMap: coordObj,   // ★ 여기 중요 ★
+        coordMap: coordObj
       });
+
     } catch (err) {
       console.error('좌표 파싱 실패:', f.name, err);
       alert('좌표 파싱 중 오류가 발생했습니다.\n파일명: ' + f.name);
@@ -698,10 +787,15 @@ document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
 
 /* ==== 뷰 유틸 ==== */
 const dashboard=document.getElementById('dashboard');
+
 function clearBodyLog(){
-  const fr=$("#fileResult"); if(fr) fr.innerHTML='';
-  const cc=$("#coordsContainer"); if(cc) cc.innerHTML='';
+  const fr=$("#fileResult");
+  if(fr) fr.innerHTML='';
+
+  const cc=$("#coordsContainer");
+  if(cc) cc.innerHTML='';
 }
+
 function setBodyHTML(html){
   const body=$("#appBody");
   clearBodyLog();
@@ -711,7 +805,7 @@ function setBodyHTML(html){
 
 /* ==== 결과값 추출 ==== */
 const EXTRACT_KEY = 'extractSelection';
-const extractState = (()=>{
+const extractState = (()=>{  
   try{ return JSON.parse(localStorage.getItem(EXTRACT_KEY)||'{}'); }
   catch{ return {}; }
 })();
@@ -719,405 +813,79 @@ if(!extractState.bomIds) extractState.bomIds = [];
 if(!extractState.coordIds) extractState.coordIds = [];
 function saveExtractState(){ localStorage.setItem(EXTRACT_KEY, JSON.stringify(extractState)); }
 
-function showExtractDashboard(){
-  const all = extractLib.all();
-  const bomCnt   = all.filter(x => x.kind === 'BOM').length;
-  const coordCnt = all.filter(x => x.kind === 'COORD').length;
+/* ============================================================
+   🟩 Part 4 — NAS 저장 기능 추가
+   ------------------------------------------------------------
+   app.js 맨 아래에 그대로 붙여 넣으면 됨
+============================================================ */
 
-  setBodyHTML(`
-    <h2 style="margin:0 0 10px 0">결과값 추출</h2>
-    <div class="dash">
-      <button class="card-btn" id="btnPickBOM">
-        <p class="card-title">BOM 선택</p>
-        <p class="card-desc">등록된 BOM 중에서 선택 (${bomCnt}개 저장됨)</p>
-      </button>
-      <button class="card-btn" id="btnPickCoord">
-        <p class="card-title">좌표데이터 선택</p>
-        <p class="card-desc">등록된 좌표데이터 중에서 선택 (${coordCnt}개 저장됨)</p>
-      </button>
-      <button class="card-btn" id="btnExtractView">
-        <p class="card-title">결과값 출력 하기</p>
-        <p class="card-desc">선택한 BOM / 좌표로 결과를 출력</p>
-      </button>
-      <button class="card-btn" id="btnExtractTxt">
-        <p class="card-title">메모장 으로 출력 하기</p>
-        <p class="card-desc">결과값을 .txt로 저장</p>
-      </button>
-      <button class="card-btn" id="btnHome3">
-        <p class="card-title">대시보드</p>
-        <p class="card-desc">홈으로 돌아가기</p>
-      </button>
-    </div>
+/**
+ * 📌 1) BOM 저장 — NAS로 업로드
+ *     POST /saerp/api/upload_bom.php
+ */
+async function saveBOMToServer(file){
+    const fd = new FormData();
+    fd.append("file", file);
 
-    <!-- ✅ 결과값 선택 삭제 / 전체 삭제 -->
-    <div style="margin:8px 0; text-align:right;">
-      <button class="btn-mini" id="btnExtractDeleteSelected">선택 삭제</button>
-      <button class="btn-mini" id="btnExtractClear">전체 삭제</button>
-    </div>
-
-    <div class="table-wrap" style="margin-top:12px">
-      <table class="table" id="extractTable">
-        <thead>
-          <tr>
-            <th style="width:40px;"><input type="checkbox" id="extractCheckAll"></th>
-            <th>구분</th>
-            <th>파일명</th>
-            <th>크기</th>
-            <th>등록/수정일</th>
-            <th>작업</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  `);
-
-  renderExtractSelectedTable();
-
-  document.getElementById('btnPickBOM')?.addEventListener('click', ()=> openSelectModal('bom'));
-  document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
-  document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
-
-  // 🔹 메모장으로 출력하기 (Top/Bot txt 생성)
-  document.getElementById('btnExtractTxt')?.addEventListener('click', () => {
-  console.log('[app.js] btnExtractTxt click, SMTText =', window.SMTText);
-
-  if (!window.SMTText || typeof window.SMTText.runFromSelectedToTxt !== 'function') {
-    alert('SMTText.runFromSelectedToTxt 함수가 없습니다.\n(콘솔 로그를 캡처해서 보여 주세요)');
-    return;
-  }
-
-  window.SMTText.runFromSelectedToTxt();
-});
-
-  // ✅ 결과값 전체 삭제 (extractLib만)
-  document.getElementById('btnExtractClear')?.addEventListener('click', ()=>{
-    if(!confirm('결과값 추출 목록을 모두 삭제할까요?\n(BOM / 좌표데이터 등록 목록에는 영향을 주지 않습니다)')) return;
-    extractLib.clear();
-    renderExtractSelectedTable();
-  });
-
-  // ✅ 결과값 선택 삭제
-  document.getElementById('btnExtractDeleteSelected')?.addEventListener('click', ()=>{
-    const tbody = document.querySelector('#extractTable tbody');
-    const checked = [...tbody.querySelectorAll('.extract-row-check:checked')];
-    if(!checked.length){
-      alert('삭제할 결과값 항목을 선택하세요.');
-      return;
-    }
-    if(!confirm(`${checked.length}개 결과값 항목을 삭제할까요?\n(결과값 추출 목록에서만 삭제됩니다)`)) return;
-
-    const targets = checked.map(cb => cb.closest('tr'))
-                           .map(tr => ({ id: tr.dataset.id, kind: tr.dataset.kind }));
-    targets.forEach(({id, kind})=> extractLib.remove(id, kind));
-    renderExtractSelectedTable();
-  });
-
-  document.getElementById('btnExtractView')?.addEventListener('click', runExtractWizard);
-}
-
-// 아래 세 줄은 초기 로드시에는 엘리먼트가 없어서 아무 일도 안 일어남 (기능 영향 X)
-renderExtractSelectedTable?.();
-document.getElementById('btnPickBOM')?.addEventListener('click', ()=> openSelectModal('bom'));
-document.getElementById('btnPickCoord')?.addEventListener('click', ()=> openSelectModal('coord'));
-document.getElementById('btnHome3')?.addEventListener('click', ()=> setBodyHTML(''));
-
-function renderExtractSelectedTable(){
-  const tbody = document.querySelector('#extractTable tbody'); 
-  if(!tbody) return;
-
-  const rows = extractLib.all();  // 결과값 전용 저장소
-
-  const fmtSize = n => (n/1024).toFixed(1)+' KB';
-  const fmtDate = r => r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19)
-                                   : (r.savedAt? r.savedAt.replace('T',' ').slice(0,19) : '-');
-  const esc = s => String(s).replace(/[&<>"]/g, m => (
-    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]
-  ));
-
-  tbody.innerHTML = rows.length ? rows.map(r=>`
-    <tr data-id="${r.id}" data-kind="${r.kind}">
-      <td><input type="checkbox" class="extract-row-check"></td>
-      <td>${r.kind}</td>
-      <td>${esc(r.name)}</td>
-      <td>${fmtSize(r.size)}</td>
-      <td>${fmtDate(r)}</td>
-      <td>
-        <button class="btn-mini act-Storage-ex">저장</button>
-        <button class="btn-mini act-edit-ex">수정</button>
-        <button class="btn-mini act-del-ex">삭제</button>
-      </td>
-    </tr>
-  `).join('') : `
-    <tr>
-      <td colspan="6" class="muted">
-        선택된 항목이 없습니다. 상단에서 선택해 주세요.
-      </td>
-    </tr>
-  `;
-
-  // ✅ 전체 선택 체크박스
-  const checkAll = document.getElementById('extractCheckAll');
-  if(checkAll){
-    checkAll.checked = false;
-    checkAll.onclick = ()=>{
-      tbody.querySelectorAll('.extract-row-check').forEach(cb=>{
-        cb.checked = checkAll.checked;
-      });
-    };
-  }
-
-  // ✅ 저장 버튼: 해당 행 정보로 엑셀(.xlsx) 생성 → 다운로드
-  tbody.querySelectorAll('.act-Storage-ex').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tr   = btn.closest('tr');
-      const id   = tr.dataset.id;
-      const kind = tr.dataset.kind;
-
-      const all = extractLib.all();
-      const fileInfo = all.find(x => x.id === id && x.kind === kind);
-
-      if(!fileInfo){
-        alert("파일 정보를 찾을 수 없습니다.");
-        return;
-      }
-
-      // XLSX 로드 확인
-      if(typeof XLSX === 'undefined'){
-        alert('엑셀 라이브러리를 불러오지 못했습니다.\nHTML에 XLSX 스크립트가 포함되어 있는지 확인해 주세요.');
-        return;
-      }
-
-      // 엑셀 데이터 구성 (간단 요약)
-      const header = ['구분','파일명','크기(KB)','등록/수정일'];
-      const row = [
-        fileInfo.kind,
-        fileInfo.name,
-        (fileInfo.size/1024).toFixed(1),
-        fmtDate(fileInfo)
-      ];
-      const aoa = [header, row];
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'RESULT');
-
-      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-      const blob = new Blob([wbout], {type:'application/octet-stream'});
-      const url  = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      const baseName = (fileInfo.name || '결과').replace(/\.[^.]+$/, '');
-      a.href = url;
-      a.download = `${baseName}_정보.xlsx`;
-      a.click();
-
-      URL.revokeObjectURL(url);
+    const res = await fetch("/saerp/api/upload_bom.php", {
+        method: "POST",
+        body: fd
     });
-  });
 
-  // ✅ 수정 버튼: BOM/좌표 선택 모달 열기
-  tbody.querySelectorAll('.act-edit-ex').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const tr   = btn.closest('tr');
-      const kind = tr.dataset.kind;   // 'BOM' 또는 'COORD'
-      if(kind === 'BOM'){
-        openSelectModal('bom');
-      }else if(kind === 'COORD'){
-        openSelectModal('coord');
-      }
+    return await res.json();
+}
+
+/**
+ * 📌 2) 좌표데이터 저장 — NAS로 업로드
+ *     POST /saerp/api/upload_coord.php
+ */
+async function saveCoordToServer(file){
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const res = await fetch("/saerp/api/upload_coord.php", {
+        method: "POST",
+        body: fd
     });
-  });
 
-  // ✅ 단일 삭제 버튼
-  tbody.querySelectorAll('.act-del-ex').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const tr   = btn.closest('tr');
-      const id   = tr.dataset.id;
-      const kind = tr.dataset.kind;
+    return await res.json();
+}
 
-      if(!confirm('해당 결과값 항목을 삭제할까요?')) return;
+/**
+ * 📌 3) 결과값 엑셀 저장 — NAS로 저장
+ *     blob + 파일명 전달
+ *     POST /saerp/api/save_extract_excel.php
+ */
+async function saveExtractExcelToServer(blob, filename){
+    const fd = new FormData();
+    fd.append("file", blob, filename);
 
-      extractLib.remove(id, kind);
-      renderExtractSelectedTable();
+    const res = await fetch("/saerp/api/save_extract_excel.php", {
+        method: "POST",
+        body: fd
     });
-  });
+
+    return await res.json();
 }
 
-/* === 선택 모달 === */
-const selectModal=document.getElementById('selectModal');
-const selectTitle=document.getElementById('selectTitle');
-const selectSearch=document.getElementById('selectSearch');
-const selectClose=document.getElementById('selectClose');
-const selectCancel=document.getElementById('selectCancel');
-const selectApply=document.getElementById('selectApply');
-const selectEmpty=document.getElementById('selectEmpty');
-const selectTools=document.getElementById('selectTools');
-const selectCount=document.getElementById('selectCount');
-const btnSelectAll=document.getElementById('btnSelectAll');
-const btnSelectNone=document.getElementById('btnSelectNone');
-const selectTable=document.getElementById('selectTable');
+/**
+ * 📌 4) 결과값 TXT 저장 — NAS로 저장
+ *     문자열(txt 내용) + 파일명 전달
+ *     POST /saerp/api/save_extract_txt.php
+ */
+async function saveExtractTxtToServer(textData, filename){
+    const fd = new FormData();
+    const blob = new Blob([textData], { type: "text/plain" });
+    fd.append("file", blob, filename);
 
-function getLibAll(type){ return type==='bom' ? window.bomLib.all() : window.coordLib.all(); }
-
-let currentSelectType=null, currentRows=[], checkboxCache=new Map();
-
-function openSelectModal(type){
-  currentSelectType = type;
-  selectTitle.textContent = (type==='bom') ? 'BOM 선택' : '좌표데이터 선택';
-
-  const raw = getLibAll(type);
-  const kind = (type === 'bom') ? 'BOM' : 'COORD';
-
-  // ✅ 이미 결과값 추출에 저장된 항목을 기준으로 체크 상태 결정
-  const selectedIds = extractLib.all()
-    .filter(x => x.kind === kind)
-    .map(x => x.id);
-
-  checkboxCache = new Map(raw.map(r=>[r.id, selectedIds.includes(r.id)]));
-
-  renderSelectTable(raw);
-
-  selectModal.setAttribute('open','');
-  selectModal.style.display='flex';
-}
-function closeSelectModal(){ selectModal.removeAttribute('open'); selectModal.style.display='none'; }
-window.openSelectModal = openSelectModal; // 메뉴 핸들러에서 호출
-
-selectClose.addEventListener('click', closeSelectModal);
-selectCancel.addEventListener('click', closeSelectModal);
-selectModal.addEventListener('click', e=>{ if(e.target===selectModal) closeSelectModal(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && selectModal.hasAttribute('open')) closeSelectModal(); });
-
-selectApply.addEventListener('click', ()=>{
-  const ids = [...checkboxCache.entries()].filter(([id,v])=>v).map(([id])=>id);
-
-  // 기존 상태도 유지 (기능 삭제 X)
-  if(currentSelectType==='bom') extractState.bomIds = ids;
-  else if(currentSelectType==='coord') extractState.coordIds = ids;
-  saveExtractState();
-
-  // ✅ 선택된 내용으로 결과값 전용 라이브러리 갱신
-  if(currentSelectType === 'bom' || currentSelectType === 'coord'){
-    extractLib.setFromSelection(currentSelectType, ids);
-  }
-
-  closeSelectModal();
-  showExtractDashboard();
-});
-
-btnSelectAll.addEventListener('click', ()=>{
-  currentRows.forEach(r=>checkboxCache.set(r.id, true));
-  syncCheckboxesFromCache(); updateSelectCount();
-});
-btnSelectNone.addEventListener('click', ()=>{
-  currentRows.forEach(r=>checkboxCache.set(r.id, false));
-  syncCheckboxesFromCache(); updateSelectCount();
-});
-selectSearch.addEventListener('input', ()=>{
-  const term = (selectSearch.value||'').trim().toLowerCase();
-  const src = getLibAll(currentSelectType);
-  const filtered = term ? src.filter(r=> (r.name||'').toLowerCase().includes(term) ) : src;
-  renderSelectTable(filtered);
-});
-
-function renderSelectTable(list){
-  currentRows = list.slice();
-  const tbody = selectTable.querySelector('tbody');
-  const fmt = n => (n/1024).toFixed(1)+' KB';
-  const dt = r => r.updatedAt ? r.updatedAt.replace('T',' ').slice(0,19)
-                              : (r.savedAt? r.savedAt.replace('T',' ').slice(0,19) : '-');
-  const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-
-  selectEmpty.style.display = list.length? 'none':'block';
-  selectTools.style.display = list.length? 'flex':'none';
-
-  tbody.innerHTML = list.map(r=>{
-    const checked = !!checkboxCache.get(r.id);
-    return `
-      <tr data-id="${r.id}">
-        <td><input type="checkbox" class="selRow" ${checked?'checked':''}></td>
-        <td>${esc(r.name)}</td>
-        <td>${fmt(r.size)}</td>
-        <td>${dt(r)}</td>
-      </tr>
-    `;
-  }).join('');
-
-  tbody.querySelectorAll('.selRow').forEach((cb, idx)=>{
-    const id = list[idx].id;
-    cb.addEventListener('change', ()=>{
-      checkboxCache.set(id, cb.checked); updateSelectCount();
+    const res = await fetch("/saerp/api/save_extract_txt.php", {
+        method: "POST",
+        body: fd
     });
-  });
 
-  updateSelectCount();
-}
-function syncCheckboxesFromCache(){
-  const trs = [...selectTable.querySelectorAll('tbody tr')];
-  trs.forEach(tr=>{
-    const id = tr.getAttribute('data-id');
-    const cb = tr.querySelector('.selRow');
-    if(cb && checkboxCache.has(id)) cb.checked = !!checkboxCache.get(id);
-  });
-}
-function updateSelectCount(){
-  const total = currentRows.length;
-  const checked = [...checkboxCache.entries()].filter(([id,v])=> v && currentRows.find(r=>r.id===id)).length;
-  selectCount.textContent = `${checked}/${total}개 선택`;
+    return await res.json();
 }
 
-/* 메뉴 연결 */
-document.getElementById('mn-bom')?.addEventListener('click',e=>{e.preventDefault();showBOMDashboard()});
-document.getElementById('mn-coords')?.addEventListener('click',e=>{e.preventDefault();showCoordDashboard()});
-document.getElementById('mn-extract')?.addEventListener('click',e=>{e.preventDefault();showExtractDashboard()});
-
-// 👉 선택 모달에서 "확인" / "취소" / 바깥 클릭 중 하나가 일어날 때까지 기다리는 헬퍼
-function waitSelectModalOnce(){
-  return new Promise(resolve => {
-    const onConfirm = () => cleanup(true);
-    const onCancel  = () => cleanup(false);
-    const onBackdrop = (e) => {
-      if(e.target === selectModal) cleanup(false);
-    };
-
-    function cleanup(result){
-      selectApply.removeEventListener('click', onConfirm);
-      selectCancel.removeEventListener('click', onCancel);
-      selectClose.removeEventListener('click', onCancel);
-      selectModal.removeEventListener('click', onBackdrop);
-      resolve(result);
-    }
-
-    selectApply.addEventListener('click', onConfirm);
-    selectCancel.addEventListener('click', onCancel);
-    selectClose.addEventListener('click', onCancel);
-    selectModal.addEventListener('click', onBackdrop);
-  });
-}
-
-// 👉 결과값 출력 하기 버튼을 눌렀을 때 전체 흐름
-async function runExtractWizard(){
-  if (!window.SMTExtract || !window.SMTExtract.runFromSelected) {
-    alert('결과값 생성 엔진(smt_extract.js)이 로드되지 않았습니다.');
-    return;
-  }
-
-  // 1단계: BOM 선택 모달
-  openSelectModal('bom');
-  const bomOk = await waitSelectModalOnce();
-  if(!bomOk) return;
-
-  // 2단계: 좌표데이터 선택 모달
-  openSelectModal('coord');
-  const coordOk = await waitSelectModalOnce();
-  if(!coordOk) return;
-
-  // 3단계: 선택된 BOM/좌표 기준으로 결과 엑셀 생성
-  try{
-    await window.SMTExtract.runFromSelected();
-  }catch(e){
-    console.error(e);
-    alert('엑셀 결과 파일을 만드는 중 오류가 발생했습니다.\n콘솔을 확인해 주세요.');
-  }
-}
+/* ============================================================
+   🟩 Part 4 끝
+============================================================ */
