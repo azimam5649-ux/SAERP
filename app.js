@@ -49,6 +49,9 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 });
 
 /* ==== 로그인/회원가입 ==== */
+// 👇 NAS API 기본 주소 (포트포워딩 해둔 주소)
+const API_BASE = 'https://saerp.synology.me:8443/saerp';
+const API_API  = API_BASE + '/api';
 const ADMIN_ID='admin', ADMIN_PW='1234';
 const store={
   get users(){return JSON.parse(localStorage.getItem('users')||'{}')},
@@ -134,7 +137,7 @@ $("#signupBtn")?.addEventListener('click', async ()=>{
   if(pw !== pw2) return showErr(err,"비밀번호가 일치하지 않습니다.");
 
   try{
-    const res = await fetch('signup.php', {
+    const res = await fetch(`${API_BASE}/signup.php`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ id, company, phone, email, pw })
@@ -319,7 +322,7 @@ window.extractLib = extractLib;
 
 async function reloadBOMFromServer(){
   try{
-    const res  = await fetch('/saerp/api/list_bom.php', { cache:'no-store' });
+    const res  = await fetch(`${API_API}/list_bom.php`, { cache:'no-store' });
     const data = await res.json();
     if(!res.ok || !data.success){
       console.warn('BOM 목록 로드 실패:', data.message || res.statusText);
@@ -335,7 +338,7 @@ async function reloadBOMFromServer(){
 
 async function reloadCoordFromServer(){
   try{
-    const res  = await fetch('/saerp/api/list_coord.php', { cache:'no-store' });
+    const res  = await fetch(`${API_API}/list_coord.php`, { cache:'no-store' });
     const data = await res.json();
     if(!res.ok || !data.success){
       console.warn('좌표 목록 로드 실패:', data.message || res.statusText);
@@ -1119,7 +1122,7 @@ async function ensureParsedBOMForSelected() {
     try {
       // NAS -> PHP 를 통해 BOM 파일 읽기
       //  \\SAVE\SAERP List\SAERP BOM List  를  get_bom.php 가 내부에서 열어주는 구조
-      const res = await fetch('/saerp/api/get_bom.php?name=' + encodeURIComponent(item.name), {
+      const res = await fetch(`${API_API}/get_bom.php?name=` + encodeURIComponent(item.name), {
         cache: 'no-store',
       });
 
