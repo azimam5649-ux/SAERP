@@ -49,7 +49,21 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 });
 
 /* ==== 로그인/회원가입 ==== */
-const ADMIN_ID='admin', ADMIN_PW='1234';
+
+// 현재 접속한 호스트(도메인)에 따라 API 주소 자동 선택
+const HOST = window.location.hostname;
+let API_BASE;
+
+if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
+  // NAS 내부에서 접속할 때
+  API_BASE = 'http://172.30.1.42/saerp/api';
+} else {
+  // GitHub Pages / saerp.synology.me 등 외부에서 접속할 때
+  API_BASE = 'https://saerp.synology.me/saerp/api';
+}
+
+const ADMIN_ID = 'admin', ADMIN_PW = '1234';
+
 const store={
   get users(){return JSON.parse(localStorage.getItem('users')||'{}')},
   set users(v){localStorage.setItem('users',JSON.stringify(v))},
@@ -58,7 +72,7 @@ const store={
   get auto(){return localStorage.getItem('autoLogin')==='true'},
   set auto(v){localStorage.setItem('autoLogin',v?'true':'false')}
 };
-const $=s=>document.querySelector(s);
+const $ = s => document.querySelector(s);
 const stackEl = document.querySelector('.stack');
 
 const view=name=>{
@@ -106,16 +120,21 @@ $("#logoutBtn")?.addEventListener('click',()=>{
 const req=["#suId","#suCompany","#suPhone","#suEmail","#suPw","#suPw2"];
 function q(sel){ return document.querySelector(sel); }
 function valOK(sel){ const el=q(sel); return !!(el && el.value.trim().length>0); }
+
 function enableIfValid(){
   const filled = req.every(valOK);
   const pwOK   = q('#suPw') && q('#suPw2') && (q('#suPw').value === q('#suPw2').value);
   const agreed = q('#agree') ? q('#agree').checked : false;
-  const btn = q('#signupBtn'); if(btn) btn.disabled = !(filled && pwOK && agreed);
+  const btn = q('#signupBtn');
+  if(btn) btn.disabled = !(filled && pwOK && agreed);
 }
+
 [...req, '#suPw', '#suPw2', '#agree'].forEach(sel=>{
   q(sel)?.addEventListener('input', enableIfValid);
   q(sel)?.addEventListener('change', enableIfValid);
 });
+
+function showErr(n,m){ if(!n) return; n.textContent=m; n.style.display='block'; }
 
 $("#signupBtn")?.addEventListener('click', async ()=>{
   const err = $("#signupErr"); 
@@ -134,7 +153,7 @@ $("#signupBtn")?.addEventListener('click', async ()=>{
   if(pw !== pw2) return showErr(err,"비밀번호가 일치하지 않습니다.");
 
   try{
-    const res = await fetch('signup.php', {
+    const res = await fetch(`${API_BASE}/signup.php`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ id, company, phone, email, pw })
@@ -212,13 +231,55 @@ async function saveFileToDirectory(dirHandle,file,subFolder){
   }
 }
 
-function forceDownload(file,prefix){
-  const url=URL.createObjectURL(file); const a=document.createElement('a');
-  a.href=url; a.download=`${prefix?prefix+'-':''}${file.name}`;
-  document.body.appendChild(a); a.click();
+function forceDownload(file, prefix){
+  const url = URL.createObjectURL(file);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = `${prefix ? prefix + '-' : ''}${file.name}`;
+  document.body.appendChild(a);
+  a.click();
   setTimeout(()=>{
-    document.body.removeChild(a);URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },0);
+}
+
+// 👇 반드시 함수 밖에 따로 선언해줘야 함
+async function saveBlobWithPicker(blob, suggestedName){
+  // 브라우저가 지원하지 않으면 기존 다운로드 fallback
+  if (!window.showSaveFilePicker) {
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = suggestedName || 'result.dat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert('이 브라우저는 저장 경로 선택 기능을 지원하지 않아 기본 다운로드로 저장했습니다.');
+    return;
+  }
+
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: suggestedName || 'result.xlsx',
+      types: [{
+        description: 'Excel 파일',
+        accept: {
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+        }
+      }]
+    });
+
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.error('saveBlobWithPicker 오류:', e);
+      alert('파일 저장 중 오류가 발생했습니다.');
+    }
+  }
 }
 
 /* ==== BOM 라이브러리 (브라우저 메타 저장) ==== */
@@ -313,38 +374,53 @@ const extractLib = {
 };
 window.extractLib = extractLib;
 
-/* ==== NAS 목록 재로딩 (BOM/좌표) ==== */
-/*  - 서버 쪽에 /saerp/api/list_bom.php / list_coord.php 가 있어야 함
-    - 실패해도 기존 localStorage 데이터는 그대로 사용 (기능 보존)  */
-
-async function reloadBOMFromServer(){
-  try{
-    const res  = await fetch('/saerp/api/list_bom.php', { cache:'no-store' });
+// ==== NAS 목록 재로딩 (좌표) ====
+// - 서버(list_coord.php)에서 받아온 메타데이터와
+//   브라우저에 저장된 좌표 목록을 name 기준으로 병합해서
+//   coordMap 은 절대 지우지 않는다.
+async function reloadCoordFromServer() {
+  try {
+    // const res = await fetch(`${API_API}/list_coord.php`, { cache: 'no-store' }); // 기존
+    const res  = await fetch(`${API_API}/list_files.php?type=coord`, { cache: 'no-store' }); // 👈 수정
     const data = await res.json();
-    if(!res.ok || !data.success){
-      console.warn('BOM 목록 로드 실패:', data.message || res.statusText);
-      return;
-    }
-    if(Array.isArray(data.files)){
-      bomLib.save(data.files);
-    }
-  }catch(e){
-    console.error('BOM 목록 로딩 오류:', e);
-  }
-}
 
-async function reloadCoordFromServer(){
-  try{
-    const res  = await fetch('/saerp/api/list_coord.php', { cache:'no-store' });
-    const data = await res.json();
-    if(!res.ok || !data.success){
+    if (!res.ok || !data.success) {
       console.warn('좌표 목록 로드 실패:', data.message || res.statusText);
       return;
     }
-    if(Array.isArray(data.files)){
-      coordLib.save(data.files);
+
+    if (Array.isArray(data.files)) {
+      // 1) 현재 브라우저에 저장된 좌표 목록 (coordMap 포함)
+      const current = coordLib.all();              // [{ id, name, coordMap, ... }]
+      const byName  = new Map(current.map(x => [x.name, x]));
+      const merged  = [];
+
+      // 2) 서버에서 온 파일 리스트와 병합
+      for (const srv of data.files) {
+        const existing = byName.get(srv.name);
+
+        if (existing) {
+          // 기존 coordMap 등은 유지, 메타 정보만 갱신
+          merged.push({
+            ...existing,
+            ...srv,          // size, savedAt 등만 최신값으로 덮어씀
+          });
+          byName.delete(srv.name);
+        } else {
+          // 브라우저엔 없고 서버에만 있는 새 파일
+          merged.push(srv);
+        }
+      }
+
+      // 3) 서버에는 없고 브라우저에만 남은 항목도 보존
+      for (const rest of byName.values()) {
+        merged.push(rest);
+      }
+
+      coordLib.save(merged);
+      renderCoordList?.();
     }
-  }catch(e){
+  } catch (e) {
     console.error('좌표 목록 로딩 오류:', e);
   }
 }
@@ -352,15 +428,37 @@ async function reloadCoordFromServer(){
 /* ==== 파일 선택 핸들러 (브라우저에서 업로드할 때) ==== */
 
 // BOM 파일 선택
+// ==== BOM 파일 선택 (브라우저에서 업로드할 때) ====
 document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
-  const files = Array.from(e.target.files||[]); if(!files.length) return;
-  logBom(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>브라우저 다운로드 폴더에 저장합니다…`);
+  const files = Array.from(e.target.files||[]); 
+  if(!files.length) return;
 
-  // 브라우저 다운로드 (원하면 이 부분 주석 처리 가능)
-  files.forEach(f=>forceDownload(f,'BOM'));
-  logBom(`⬇️ 브라우저 다운로드 폴더(기본 위치)에 저장했습니다.`);
+  logBom(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>NAS로 업로드합니다…`);
 
-  // BOM 파싱 + 라이브러리에 parsedBOM까지 저장 (브라우저 기준)
+  // 1) NAS로 업로드
+  for (const f of files){
+    const fd = new FormData();
+    fd.append('bomFile', f, f.name);   // ← 여기 이름이 php 와 동일해야 함
+
+    try{
+      const res  = await fetch(`${API_BASE}/upload_bom.php`, {
+        method: 'POST',
+        body  : fd
+      });
+      const data = await res.json().catch(()=>null);
+
+      if (!res.ok || !data || !data.success){
+        logBom(`❌ NAS 업로드 실패: ${f.name} (${data?.message || res.statusText})`);
+      }else{
+        logBom(`✅ NAS 업로드 성공: ${f.name}`);
+      }
+    }catch(err){
+      console.error('BOM 업로드 오류:', err);
+      logBom(`❌ NAS 업로드 중 오류 발생: ${f.name}`);
+    }
+  }
+
+  // 2) 브라우저 측 파싱 + localStorage 저장 (기존 기능 유지)
   const list = bomLib.all();
   const now  = new Date().toISOString();
 
@@ -383,7 +481,7 @@ document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
         type: f.type,
         savedAt: now,
         updatedAt: null,
-        parsedBOM: parsedBOM,
+        parsedBOM
       });
     } catch (err) {
       console.error('BOM 파싱 실패:', f.name, err);
@@ -394,55 +492,84 @@ document.getElementById('pickBOMFiles')?.addEventListener('change', async e=>{
   bomLib.save(list);
   renderBOMList();
 
-  // NAS 에 업로드하는 PHP가 따로 있다면 여기서 fetch 호출 추가 가능
+  // NAS 목록도 다시 읽어오기 (선택사항이지만 있으면 더 좋음)
+  await reloadBOMFromServer();
 });
 
-// 좌표 파일 선택
-document.getElementById('pickCoordFiles')?.addEventListener('change', async e=>{
-  const files = Array.from(e.target.files||[]); if(!files.length) return;
-  logCoord(`📄 선택: ${files.map(f=>f.name).slice(0,5).join(', ')}${files.length>5?` 외 ${files.length-5}개`:''}<br>브라우저 다운로드 폴더에 저장합니다…`);
+// ==== 좌표데이터 파일 선택 (브라우저에서 업로드할 때) ====
+document.getElementById('pickCoordFiles')?.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
 
-  // 브라우저 다운로드
-  files.forEach(f=>forceDownload(f,'COORD'));
-  logCoord(`⬇️ 브라우저 다운로드 폴더(기본 위치)에 저장했습니다.`);
+  const log = window.logCoord || window.logBom || console.log;
+  log(`📄 선택된 좌표파일: ${files.map(f => f.name).join(', ')}<br>NAS로 업로드 + 파싱합니다…`);
 
-  // 좌표 파싱 + coordLib 에 coordMap 포함해서 저장 (Map → Object 변환)
+  // 1) NAS로 업로드
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('coordFile', file, file.name);
+
+    try {
+      const res  = await fetch(`${API_BASE}/upload_coord.php`, { method: 'POST', body: fd });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data || !data.success) {
+        log(`❌ NAS 업로드 실패: ${file.name} (${data?.message || res.statusText})`);
+      } else {
+        log(`✅ NAS 업로드 성공: ${file.name}`);
+      }
+    } catch (err) {
+      console.error('좌표 업로드 오류:', err);
+      log(`❌ NAS 업로드 중 오류 발생: ${file.name}`);
+    }
+  }
+
+  // 2) 브라우저 측 파싱 + localStorage 저장
   const list = coordLib.all();
   const now  = new Date().toISOString();
 
-  for (const f of files) {
+  for (const file of files) {
     try {
-      const data = await f.arrayBuffer();
-      const wb   = XLSX.read(data, { type: 'array' });
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { type: 'array' });
 
-      if (!window.SMTExtract || !SMTExtract.parseCoordWorkbook) {
-        alert('SMTExtract.parseCoordWorkbook 함수를 찾을 수 없습니다.');
+      if (!window.SMTExtract || typeof SMTExtract.parseCoordWorkbook !== 'function') {
+        alert(
+          '좌표 파싱 함수 SMTExtract.parseCoordWorkbook 을 찾을 수 없습니다.\n' +
+          'smt_extract.js 가 app.js 보다 먼저 로드되어 있는지 확인해 주세요.'
+        );
         break;
       }
 
-      const coordMap = SMTExtract.parseCoordWorkbook(wb, { fileName: f.name });
-      const coordObj = Object.fromEntries(coordMap);
+      const coordMap = SMTExtract.parseCoordWorkbook(wb, { fileName: file.name });
+      if (!coordMap) throw new Error('파싱 결과가 없습니다.');
+
+      const plain = coordMap instanceof Map ? Object.fromEntries(coordMap) : coordMap;
 
       list.push({
-        id: crypto.randomUUID(),
-        name: f.name,
-        size: f.size,
-        type: f.type,
-        savedAt: now,
-        updatedAt: null,
-        coordMap: coordObj,
+        id        : crypto.randomUUID(),
+        name      : file.name,
+        size      : file.size,
+        type      : file.type,
+        savedAt   : now,
+        updatedAt : null,
+        coordMap  : plain,
       });
     } catch (err) {
-      console.error('좌표 파싱 실패:', f.name, err);
-      alert('좌표 파싱 중 오류가 발생했습니다.\n파일명: ' + f.name);
+      console.error('좌표 파싱 실패:', file.name, err);
+      alert(
+        '좌표 파싱 중 오류가 발생했습니다.\n파일명: ' + file.name + '\n\n' +
+        '자세한 내용은 개발자 도구 콘솔(F12) → Console 탭을 확인해 주세요.'
+      );
     }
   }
 
   coordLib.save(list);
-  renderCoordList();
-
-  // NAS 업로드 PHP가 있다면 여기서 호출
+  renderCoordList?.();
+  await reloadCoordFromServer();
 });
+
+
 
 /* ==== 뷰 유틸 ==== */
 const dashboard=document.getElementById('dashboard');
@@ -741,13 +868,7 @@ function showExtractDashboard(){
   setBodyHTML(`
     <h2 style="margin:0 0 10px 0">결과값 추출</h2>
     <div class="dash">
-
-
-
       </button>
-
-
-
       </button>
       <button class="card-btn" id="btnExtractView">
         <p class="card-title">결과값 출력 하기</p>
@@ -876,50 +997,62 @@ function renderExtractSelectedTable(){
 
   // 저장 버튼 → 간단 엑셀 요약 다운로드
   tbody.querySelectorAll('.act-Storage-ex').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tr   = btn.closest('tr');
-      const id   = tr.dataset.id;
-      const kind = tr.dataset.kind;
+  // 👇 async 로 바꿔줘야 await 사용 가능
+  btn.addEventListener('click', async () => {
+    const tr   = btn.closest('tr');
+    const id   = tr.dataset.id;
+    const kind = tr.dataset.kind;
 
-      const all = extractLib.all();
-      const fileInfo = all.find(x => x.id === id && x.kind === kind);
+    const all = extractLib.all();
+    const fileInfo = all.find(x => x.id === id && x.kind === kind);
 
-      if(!fileInfo){
-        alert("파일 정보를 찾을 수 없습니다.");
-        return;
-      }
+    if(!fileInfo){
+      alert("파일 정보를 찾을 수 없습니다.");
+      return;
+    }
 
-      if(typeof XLSX === 'undefined'){
-        alert('엑셀 라이브러리를 불러오지 못했습니다.\nHTML에 XLSX 스크립트가 포함되어 있는지 확인해 주세요.');
-        return;
-      }
+    if(typeof XLSX === 'undefined'){
+      alert('엑셀 라이브러리를 불러오지 못했습니다.\nHTML에 XLSX 스크립트가 포함되어 있는지 확인해 주세요.');
+      return;
+    }
 
-      const header = ['구분','파일명','크기(KB)','등록/수정일'];
-      const row = [
-        fileInfo.kind,
-        fileInfo.name,
-        (fileInfo.size/1024).toFixed(1),
-        fmtDate(fileInfo)
-      ];
-      const aoa = [header, row];
+    const header = ['구분','파일명','크기(KB)','등록/수정일'];
+    const row = [
+      fileInfo.kind,
+      fileInfo.name,
+      (fileInfo.size/1024).toFixed(1),
+      // 기존 fmtDate 함수 그대로 사용
+      (fileInfo.updatedAt ? fileInfo.updatedAt.replace('T',' ').slice(0,19)
+                          : (fileInfo.savedAt ? fileInfo.savedAt.replace('T',' ').slice(0,19) : '-'))
+    ];
+    const aoa = [header, row];
 
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'RESULT');
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'RESULT');
 
-      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-      const blob = new Blob([wbout], {type:'application/octet-stream'});
-      const url  = URL.createObjectURL(blob);
+    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const blob  = new Blob([wbout], {type:'application/octet-stream'});
+    const baseName      = (fileInfo.name || '결과').replace(/\.[^.]+$/, '');
+    const suggestedName = `${baseName}_정보.xlsx`;
 
-      const a = document.createElement('a');
-      const baseName = (fileInfo.name || '결과').replace(/\.[^.]+$/, '');
-      a.href = url;
-      a.download = `${baseName}_정보.xlsx`;
+    // ✅ 1순위: showSaveFilePicker 지원되면 “경로 선택 창” 띄우기
+    if (window.showSaveFilePicker) {
+      await saveBlobWithPicker(blob, suggestedName);
+    } else {
+      // ✅ 2순위: 지원 안 하면 기존처럼 다운로드로 fallback
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href      = url;
+      a.download  = suggestedName;
+      document.body.appendChild(a);
       a.click();
-
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    });
+      alert('이 브라우저는 경로 선택 기능을 지원하지 않아 기본 다운로드로 저장했습니다.');
+    }
   });
+});
 
   // 수정 버튼: BOM/좌표 선택 모달 열기
   tbody.querySelectorAll('.act-edit-ex').forEach(btn=>{
@@ -1119,9 +1252,10 @@ async function ensureParsedBOMForSelected() {
     try {
       // NAS -> PHP 를 통해 BOM 파일 읽기
       //  \\SAVE\SAERP List\SAERP BOM List  를  get_bom.php 가 내부에서 열어주는 구조
-      const res = await fetch('/saerp/api/get_bom.php?name=' + encodeURIComponent(item.name), {
-        cache: 'no-store',
-      });
+const res = await fetch(
+  `${API_BASE}/get_bom.php?name=` + encodeURIComponent(item.name),
+  { cache: 'no-store' }
+);
 
       if (!res.ok) {
         console.warn('BOM 파일 로드 실패:', item.name, res.status, res.statusText);
@@ -1221,4 +1355,60 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
     });
   }
+});
+
+async function saveResultAsExcelToNAS(fileName, excelBlob){
+  const buffer = await excelBlob.arrayBuffer();
+  const bytes  = new Uint8Array(buffer);
+  let binary   = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+
+  const res = await fetch(`${API_BASE}/save_extract_excel.php`, {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body   : JSON.stringify({ filename: fileName, content: base64 })
+  });
+
+  const data = await res.json().catch(()=>null);
+
+  return res.ok && data?.success;
+}
+
+async function saveResultAsTxtToNAS(fileName, textContent){
+  const res = await fetch(`${API_BASE}/save_extract_txt.php`, {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body   : JSON.stringify({ filename: fileName, content: textContent })
+  });
+
+  const data = await res.json().catch(()=>null);
+
+  return res.ok && data?.success;
+}
+
+document.getElementById('btnExportExcel')?.addEventListener('click', async ()=>{
+
+  // ⚠️ 이 부분은 네가 화면에서 만든 workbook 으로 교체해야 함
+  const wb    = SMTExtract.buildResultWorkbook(currentResultData);
+  const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  const blob  = new Blob([wbout], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  const fileName = `결과값_${Date.now()}.xlsx`;
+  const ok = await saveResultAsExcelToNAS(fileName, blob);
+
+  if (ok) alert("NAS 저장 완료");
+  else    alert("NAS 저장 실패");
+});
+
+document.getElementById('btnExportTxt')?.addEventListener('click', async ()=>{
+
+  // ⚠️ 이 부분은 네가 현재 화면에서 출력하는 내용으로 채워야 함
+  const text = currentResultText;
+
+  const fileName = `결과값_${Date.now()}.txt`;
+  const ok = await saveResultAsTxtToNAS(fileName, text);
+
+  if (ok) alert("TXT 저장 완료");
+  else    alert("TXT 저장 실패");
 });
