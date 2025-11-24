@@ -55,11 +55,13 @@ const HOST = window.location.hostname;
 let API_BASE;
 
 if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
-  // NAS 내부에서 접속할 때
+  // NAS 내부에서 접속할 때 (사설 IP)
+  // 내부에서는 포트 포워딩을 통하지 않으므로 기본 포트(80 또는 443)를 사용합니다.
   API_BASE = 'http://172.30.1.42/saerp/api';
 } else {
-  // GitHub Pages / saerp.synology.me 등 외부에서 접속할 때
-  API_BASE = 'https://saerp.synology.me/saerp/api';
+  // GitHub Pages / 외부에서 접속할 때 (DDNS 주소 + 포트)
+  // ⚠️ 외부 접속 포트(예: 8080)를 반드시 포함해야 합니다.
+  API_BASE = 'https://saerp.synology.me:8080/saerp/api';
 }
 
 const ADMIN_ID = 'admin', ADMIN_PW = '1234';
