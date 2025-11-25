@@ -63,7 +63,7 @@ if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
   // 2. GitHub Pages / 외부에서 접속할 때 (https 사용)
   // 🚨 이 부분을 찾아 'http'를 'https'로 변경해야 합니다.
   // 443 포트를 포워딩했으므로 포트 번호는 생략합니다.
-  API_BASE = "https://saerp.synology.me/api";
+  API_BASE = "https://saerp.synology.me/saerp/api";
 }
 
 const ADMIN_ID = 'admin', ADMIN_PW = '1234';
