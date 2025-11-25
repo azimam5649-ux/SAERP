@@ -1,19 +1,19 @@
 <?php
-/****************************************************************
- * upload_bom.php — Reverse Proxy + GitHub Pages 완전 호환 최종본
- ****************************************************************/
+/******************************************************
+ * upload_bom.php — Reverse Proxy 최종 안정 버전
+ ******************************************************/
 
-// ============== CORS 설정 ===============
+// ========== CORS ==========
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-$allowed_origins = [
-    'https://azimam5649-ux.github.io',     // GitHub Pages
-    'https://saerp.synology.me',           // 웹사이트
-    'https://api.saerp.synology.me',       // API 서버 프록시
-    'http://172.30.1.42',                  // 내부망
+$allowed = [
+    'http://172.30.1.42',
+    'https://saerp.synology.me',
+    'https://api.saerp.synology.me',
+    'https://azimam5649-ux.github.io'
 ];
 
-if (in_array($origin, $allowed_origins, true)) {
+if (in_array($origin, $allowed, true)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: https://azimam5649-ux.github.io");
@@ -21,67 +21,63 @@ if (in_array($origin, $allowed_origins, true)) {
 
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, X-Requested-With, Authorization");
+header("Access-Control-Allow-Headers: Content-Type, X-Requested-With");
 
-// OPTIONS 프리플라이트 즉시 처리
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// ============== JSON 응답 함수 ===============
-function send_json($arr, $code = 200) {
+header('Content-Type: application/json; charset=utf-8');
+
+// JSON 리턴 함수
+function respond($arr, $code=200){
     http_response_code($code);
-    header('Content-Type: application/json; charset=utf-8');
     echo json_encode($arr, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// ============== 메서드 체크 ===============
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    send_json(['success' => false, 'message' => 'POST 방식만 허용됩니다.'], 405);
-}
-
-// ============== 설정파일 ===============
-require_once __DIR__ . '/config.php';  // PATH_BOM 가져오기
+// ========== config 로드 ==========
+require_once __DIR__ . '/config.php';
 
 if (!defined('PATH_BOM')) {
-    send_json(['success' => false, 'message' => 'PATH_BOM 미정의']);
+    respond(['success'=>false, 'message'=>'PATH_BOM undefined']);
 }
 
-// ============== 파일 업로드 체크 ===============
+// ========== 파일 체크 ==========
 if (!isset($_FILES['file'])) {
-    send_json(['success' => false, 'message' => '업로드된 파일이 없습니다.']);
+    respond(['success'=>false, 'message'=>'업로드된 파일 없음']);
 }
 
-$file = $_FILES['file'];
+$f = $_FILES['file'];
 
-if ($file['error'] !== UPLOAD_ERR_OK) {
-    send_json(['success' => false, 'message' => '파일 업로드 오류: code ' . $file['error']]);
+if ($f['error'] !== UPLOAD_ERR_OK) {
+    respond(['success'=>false, 'message'=>'업로드 오류: '.$f['error']]);
 }
 
-// ============== 폴더 생성 ===============
-$dir = rtrim(PATH_BOM, '/') . '/';
+// ========== 저장 경로 ==========
+$saveDir = rtrim(PATH_BOM, '/') . '/';
 
-if (!is_dir($dir)) {
-    mkdir($dir, 0777, true);
+if (!is_dir($saveDir)) {
+    if (!mkdir($saveDir, 0777, true)) {
+        respond(['success'=>false, 'message'=>'폴더 생성 실패 또는 권한 오류']);
+    }
 }
 
-// ============== 파일 저장 ===============
-$name = basename($file['name']);
-$target = $dir . $name;
+// ========== 파일 저장 ==========
+$filename = basename($f['name']);
+$target = $saveDir . $filename;
 
-if (!move_uploaded_file($file['tmp_name'], $target)) {
-    send_json(['success' => false, 'message' => 'NAS 파일 저장 실패']);
+if (!move_uploaded_file($f['tmp_name'], $target)) {
+    respond(['success'=>false, 'message'=>'NAS 저장 실패: move_uploaded_file']);
 }
 
-// ============== 성공 응답 ===============
-send_json([
+respond([
     'success' => true,
-    'message' => '업로드 완료',
+    'message' => 'BOM 저장 완료!',
     'file' => [
-        'name' => $name,
-        'size' => $file['size'],
-        'uploadedAt' => date('Y-m-d H:i:s'),
-    ],
+        'name' => $filename,
+        'size' => $f['size'],
+        'uploadedAt' => date('Y-m-d H:i:s')
+    ]
 ]);

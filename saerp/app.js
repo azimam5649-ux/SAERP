@@ -50,30 +50,30 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 
 /* ==== 로그인/회원가입 ==== */
 
-/* ========= API 주소 자동 설정 ========= */
-
-/* ===============================
-    🔥 자동 API 주소 선택 (최종본)
-   =============================== */
+/* ================================
+   🔥 API BASE 주소 자동 설정 (최종버전)
+   ================================ */
 
 const HOST = window.location.hostname;
 let API_BASE;
 
-// 1. NAS 내부 LAN 접속일 때 → http 사용
+// 내부망에서 접근 (NAS 직접 접근)
 if (
-    HOST === "172.30.1.42" ||
-    HOST === "localhost" ||
-    HOST === "127.0.0.1"
+    HOST === '172.30.1.42' ||
+    HOST === 'localhost' ||
+    HOST === '127.0.0.1'
 ) {
+    // NAS 내부 IP → Nginx/Apache 가 80 에서 PHP 처리
     API_BASE = "http://172.30.1.42/saerp/api";
 }
-
-// 2. GitHub Pages 혹은 외부 HTTPS 접속일 때 → Reverse Proxy 사용
+// GitHub Pages 등 외부에서 접근 (HTTPS)
 else {
-    API_BASE = "https://api.saerp.synology.me/saerp/api";
+    // Reverse Proxy 로 연결된 API 서버 주소
+    API_BASE = "https://api.saerp.synology.me";
 }
 
-console.log("🚀 API_BASE =", API_BASE);
+console.log("🔧 API_BASE =", API_BASE);
+
 
 
 /* ========= 파일 목록 불러오기 ========= */
