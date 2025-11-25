@@ -52,34 +52,29 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 
 /* ========= API 주소 자동 설정 ========= */
 
+/* ===============================
+    🔥 자동 API 주소 선택 (최종본)
+   =============================== */
+
 const HOST = window.location.hostname;
 let API_BASE;
 
+// 1. NAS 내부 LAN 접속일 때 → http 사용
 if (
-  HOST === "172.30.1.42" ||
-  HOST === "localhost" ||
-  HOST === "127.0.0.1"
+    HOST === "172.30.1.42" ||
+    HOST === "localhost" ||
+    HOST === "127.0.0.1"
 ) {
-    // NAS 내부 접속
     API_BASE = "http://172.30.1.42/saerp/api";
-} else {
-    // GitHub Pages 또는 외부 HTTPS 접속
+}
+
+// 2. GitHub Pages 혹은 외부 HTTPS 접속일 때 → Reverse Proxy 사용
+else {
     API_BASE = "https://api.saerp.synology.me/saerp/api";
 }
 
-/* ========= BOM 업로드 ========= */
+console.log("🚀 API_BASE =", API_BASE);
 
-async function uploadBOM(file) {
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await fetch(`${API_BASE}/upload_bom.php`, {
-        method: "POST",
-        body: form,
-    });
-
-    return await res.json();
-}
 
 /* ========= 파일 목록 불러오기 ========= */
 async function listBOM() {
