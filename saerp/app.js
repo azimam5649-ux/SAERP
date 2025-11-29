@@ -58,18 +58,18 @@ const HOST = window.location.hostname;
 let API_BASE;
 
 // 내부망에서 접근 (NAS 직접 접근)
-if (
-    HOST === '172.30.1.42' ||
-    HOST === 'localhost' ||
-    HOST === '127.0.0.1'
-) {
-    // NAS 내부 IP → Nginx/Apache 가 80 에서 PHP 처리
-    API_BASE = "http://172.30.1.42/saerp/api";
-}
-// GitHub Pages 등 외부에서 접근 (HTTPS)
-else {
-    // Reverse Proxy 로 연결된 API 서버 주소
-    API_BASE = "https://api.saerp.synology.me";
+// app.html 수정
+
+if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
+    // 내부망 접속은 기존대로 유지 (상황에 따라 다를 수 있음)
+    API_BASE = 'http://172.30.1.42/saerp/api';
+} else {
+    // ✅ 외부 접속: 문서 루트가 이미 '/saerp'이므로, 주소에서는 '/saerp'를 뺍니다.
+    // 만약 PHP 파일들이 'saerp' 폴더 안에 바로 있다면:
+    API_BASE = 'https://saerp.synology.me:8080'; 
+    
+    // (만약 saerp 폴더 안에 api 폴더를 따로 만들고 그 안에 PHP를 넣었다면):
+    // API_BASE = 'https://saerp.synology.me:8080/api';
 }
 
 console.log("🔧 API_BASE =", API_BASE);
