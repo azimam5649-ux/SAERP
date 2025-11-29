@@ -1,112 +1,75 @@
 <?php
-/******************************************************
- * upload_bom.php — GitHub Pages 완전 호환 최종본
- * - GitHub Pages(HTTPS) → NAS(PHP) 파일 업로드 지원
- * - CORS 전체 허용
- * - OPTIONS preflight 정상 처리
- * - JSON 응답 일관성
- * - NAS 파일권한/존재 여부 자동 처리
- ******************************************************/
+// upload_bom.php: BOM 파일 업로드 (디버깅 강화판)
 
-// =======================
-// 🔥 CORS 허용 영역
-// =======================
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+// 1. 설정 파일 로드
+require_once __DIR__ . '/config.php'; 
 
-$allowed_origins = [
-    'https://azimam5649-ux.github.io',
-    'https://saerp.synology.me',
-    'http://172.30.1.42',
-    'http://172.30.1.42:80'
-];
-
-// 허용된 Origin만 특정 허용 (보안 ↑)
-if (in_array($origin, $allowed_origins, true)) {
-    header("Access-Control-Allow-Origin: $origin");
-} else {
-    // 기본 GitHub Pages 허용
-    header("Access-Control-Allow-Origin: https://azimam5649-ux.github.io");
-}
-
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, X-Requested-With, Authorization");
-
-// Preflight (OPTIONS) 요청 즉시 종료
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-// =======================
-// 공용 함수
-// =======================
-function send_json($arr, $code = 200) {
-    http_response_code($code);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($arr, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-// =======================
-// 🔒 요청 메서드 검증
-// =======================
+// 2. 메서드 확인 (405 오류 방지)
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    send_json(['success' => false, 'message' => 'POST 방식만 허용됩니다.'], 405);
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => '잘못된 요청입니다. POST 메서드만 허용됩니다.'], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// =======================
-// 📁 config.php 불러오기
-// =======================
-require_once __DIR__ . '/config.php';  // 반드시 PATH_BOM 정의되어 있어야 함
-
-if (!defined('PATH_BOM')) {
-    send_json(['success' => false, 'message' => 'NAS 경로(PATH_BOM)가 설정되지 않았습니다.']);
+// 3. 파일 전송 여부 확인
+if (!isset($_FILES['bomFile'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => '파일(bomFile)이 전송되지 않았습니다.'], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// =======================
-// 📦 파일 체크
-// =======================
-if (!isset($_FILES['file'])) {
-    send_json(['success' => false, 'message' => '업로드된 파일이 없습니다.']);
+$file = $_FILES['bomFile'];
+$fileName = basename($file['name']);
+
+// config.php에서 정의한 BOM 경로 사용
+$targetDir = PATH_BOM; 
+$targetPath = $targetDir . $fileName;
+$tempPath = $file['tmp_name'];
+
+// 4. 저장 폴더 존재 확인 (가장 먼저 체크)
+if (!is_dir($targetDir)) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false, 
+        'message' => '저장 폴더를 찾을 수 없습니다: ' . $targetDir,
+        'hint' => 'open_basedir 설정에 이 경로가 빠져 있거나, 실제 폴더명 오타일 수 있습니다.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-$file = $_FILES['file'];
-
+// 5. 업로드 중 기본 에러 확인
 if ($file['error'] !== UPLOAD_ERR_OK) {
-    send_json(['success' => false, 'message' => '업로드 오류 발생: 코드 ' . $file['error']]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'PHP 파일 업로드 오류 코드: ' . $file['error']], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// =======================
-// 📁 저장 폴더 생성 (없으면 자동 생성)
-// =======================
-$dir = rtrim(PATH_BOM, '/') . '/';
+// 6. 파일을 임시 위치에서 최종 위치로 이동 (★ 여기가 핵심)
+// 경고 메시지를 억제하지 않고, 에러 발생 시 내용을 잡아서 출력합니다.
+if (!@move_uploaded_file($tempPath, $targetPath)) {
+    // 🚨 시스템 에러 메시지 가져오기
+    $error = error_get_last();
+    $sysMsg = $error ? $error['message'] : '알 수 없는 시스템 오류';
 
-if (!is_dir($dir)) {
-    if (!mkdir($dir, 0777, true)) {
-        send_json(['success' => false, 'message' => 'NAS 폴더 생성 실패 (권한 부족 가능)']);
-    }
+    http_response_code(500);
+    echo json_encode([
+        'success' => false, 
+        'message' => '이동 실패! 원인: ' . $sysMsg, // ★ 진짜 에러 이유 출력
+        'debug_info' => [
+            '임시파일위치' => $tempPath,
+            '목표위치' => $targetPath,
+            '임시파일존재여부' => file_exists($tempPath) ? '있음' : '없음 (이미 삭제됨?)',
+            '목표폴더쓰기권한' => is_writable($targetDir) ? '있음' : '없음 (권한 문제!)'
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// =======================
-// 📄 파일 저장
-// =======================
-$name = basename($file['name']);               // 보안: 경로 제거
-$target = $dir . $name;
-
-if (!move_uploaded_file($file['tmp_name'], $target)) {
-    send_json(['success' => false, 'message' => 'NAS 저장 실패 (move_uploaded_file 실패)']);
-}
-
-// =======================
-// 🎉 성공 응답
-// =======================
-send_json([
+// 7. 성공 응답
+http_response_code(200);
+echo json_encode([
     'success' => true,
-    'message' => 'BOM 저장 완료',
-    'file' => [
-        'name' => $name,
-        'size' => $file['size'],
-        'uploadedAt' => date('Y-m-d H:i:s'),
-    ]
-]);
+    'message' => 'BOM 파일 업로드 성공',
+    'fileName' => $fileName,
+], JSON_UNESCAPED_UNICODE);
+?>

@@ -50,21 +50,28 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 
 /* ==== 로그인/회원가입 ==== */
 
-// 현재 접속한 호스트(도메인)에 따라 API 주소 자동 선택
+/* ================================
+   🔥 API BASE 주소 자동 설정 (최종버전)
+   ================================ */
+
 const HOST = window.location.hostname;
 let API_BASE;
 
-// JavaScript 파일의 API_BASE 설정 로직
-
 if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
-  // 1. NAS 내부에서 접속할 때 (http 사용)
-  API_BASE = 'http://172.30.1.42/saerp/api';
+    // 내부망
+    API_BASE = 'http://172.30.1.42/saerp/api';
 } else {
-  // 2. GitHub Pages / 외부에서 접속할 때 (https 사용)
-  // 🚨 이 부분을 찾아 'http'를 'https'로 변경해야 합니다.
-  // 443 포트를 포워딩했으므로 포트 번호는 생략합니다.
-  API_BASE = 'https://api.saerp.synology.me';
+    // ★ 수정할 부분: 뒤에 '/api'를 붙여주세요!
+    API_BASE = 'https://saerp.synology.me/api'; 
 }
+console.log("🔧 API_BASE =", API_BASE);
+
+/* ========= 파일 목록 불러오기 ========= */
+async function listBOM() {
+    const res = await fetch(`${API_BASE}/list_bom.php`);
+    return await res.json();
+}
+
 
 const ADMIN_ID = 'admin', ADMIN_PW = '1234';
 
