@@ -57,18 +57,14 @@ document.getElementById('themeToggle')?.addEventListener('click', ()=>{
 const HOST = window.location.hostname;
 let API_BASE;
 
-// 내부망에서 접근 (NAS 직접 접근)
-// app.html 수정
-
 if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
-    // 내부망 접속은 기존대로 유지 (상황에 따라 다를 수 있음)
-    API_BASE = 'http://172.30.1.42/saerp/api';
+    API_BASE = 'http://172.30.1.42/saerp/api'; // 내부망은 그대로 둠 (문서 루트 안 바꿨으면)
 } else {
-    // ✅ 외부 접속: 문서 루트가 이미 '/saerp'이므로, 주소에서는 '/saerp'를 뺍니다.
-    // 만약 PHP 파일들이 'saerp' 폴더 안에 바로 있다면:
-    API_BASE = 'https://saerp.synology.me:8080'; 
+    // ★ 여기를 수정하세요!
+    // PHP 파일들이 문서 루트(saerp 폴더)에 바로 들어있다면:
+    API_BASE = 'https://saerp.synology.me:8080/api';
     
-    // (만약 saerp 폴더 안에 api 폴더를 따로 만들고 그 안에 PHP를 넣었다면):
+    // (혹시 saerp 폴더 안에 api라는 폴더를 따로 만들어서 넣었다면):
     // API_BASE = 'https://saerp.synology.me:8080/api';
 }
 
@@ -1433,3 +1429,4 @@ document.getElementById('btnExportTxt')?.addEventListener('click', async ()=>{
   if (ok) alert("TXT 저장 완료");
   else    alert("TXT 저장 실패");
 });
+
