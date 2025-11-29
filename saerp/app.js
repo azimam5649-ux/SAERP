@@ -70,8 +70,6 @@ if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
 
 console.log("🔧 API_BASE =", API_BASE);
 
-
-
 /* ========= 파일 목록 불러오기 ========= */
 async function listBOM() {
     const res = await fetch(`${API_BASE}/list_bom.php`);
@@ -1429,4 +1427,3 @@ document.getElementById('btnExportTxt')?.addEventListener('click', async ()=>{
   if (ok) alert("TXT 저장 완료");
   else    alert("TXT 저장 실패");
 });
-
