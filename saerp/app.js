@@ -58,14 +58,17 @@ const HOST = window.location.hostname;
 let API_BASE;
 
 if (HOST === '172.30.1.42' || HOST === 'localhost' || HOST === '127.0.0.1') {
-    API_BASE = 'http://172.30.1.42/saerp/api'; // 내부망은 그대로 둠 (문서 루트 안 바꿨으면)
+    // 내부망
+    API_BASE = 'http://172.30.1.42/saerp/api';
 } else {
-    // ★ 여기를 수정하세요!
-    // PHP 파일들이 문서 루트(saerp 폴더)에 바로 들어있다면:
-    API_BASE = 'https://saerp.synology.me:8080/api';
+    // ★ 수정할 부분: 포트 번호(:8080)를 지우세요!
+    // Apache 설정을 '이름 기반(HTTPS)'으로 하셨기 때문에 기본 포트(443)를 씁니다.
+    // 문서 루트가 /web/saerp 이므로 뒤에 /saerp 도 붙이지 않습니다.
     
-    // (혹시 saerp 폴더 안에 api라는 폴더를 따로 만들어서 넣었다면):
-    // API_BASE = 'https://saerp.synology.me:8080/api';
+    API_BASE = 'https://saerp.synology.me'; 
+    
+    // (참고: 만약 php 파일들이 saerp 폴더 안의 api 폴더에 있다면 아래처럼)
+    // API_BASE = 'https://saerp.synology.me/api'; 
 }
 
 console.log("🔧 API_BASE =", API_BASE);
